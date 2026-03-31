@@ -1,6 +1,3 @@
-<p align="center">
-  <img src="assets/logo.png" alt="Futu Agent Hub" width="200" />
-</p>
 
 <h1 align="center">Futu Agent Hub</h1>
 <p align="center">
@@ -17,9 +14,6 @@
   <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-moomoo-api-skill">Moomoo API Skill</a> · <a href="#-content-skills">Content Skills</a> · <a href="#-examples">Examples</a>
 </p>
 
-<p align="center">
-  English | <a href="README_CN.md">简体中文</a>
-</p>
 
 ---
 
@@ -37,10 +31,10 @@ Futu Agent Hub ships with **4 production-ready Skills** across two categories:
 
 | Skill | Category | Description |
 |-------|----------|-------------|
-| [**Moomoo API**](#moomoo-api-skill) | Trading & Market Data | Full Moomoo API wrapped as a Skill — quotes, K-lines, order placement, positions, account management, and more |
-| [**News Search**](#news-search--资讯搜索) | Content | Search news, announcements, and research reports across the Futu platform |
-| [**Stock Briefing**](#stock-briefing--个股解读) | Content | Get real-time factual updates and core analysis for any stock |
-| [**Sentiment Gauge**](#sentiment-gauge--情绪温度计) | Content | Aggregated community sentiment, KOL opinions, and market mood as a standardized score |
+| Moomoo API | Trading & Market Data | Full Moomoo API wrapped as a Skill — quotes, K-lines, order placement, positions, account management, and more |
+| News Search | Content | Search news, announcements, and research reports across the Futu platform |
+| Stock Briefing | Content | Get real-time factual updates and core analysis for any stock |
+| Sentiment Gauge | Content | Aggregated community sentiment, KOL opinions, and market mood as a standardized score |
 
 ---
 
