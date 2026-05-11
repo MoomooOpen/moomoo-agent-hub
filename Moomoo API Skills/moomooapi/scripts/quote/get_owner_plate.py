@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-获取股票所属板块
+Get Stock's Plates (Sectors)
 
-功能：查询指定股票所属的所有板块
-用法：python get_owner_plate.py HK.00700 US.AAPL
+Function: Query all plates (sectors) a given stock belongs to
+Usage: python get_owner_plate.py HK.00700 US.AAPL
 
-接口限制：
-- 每 30 秒内最多请求 10 次
-- 每次股票代码上限 200 个
-- 仅支持正股和指数
+API limits:
+- Max 10 requests per 30 seconds
+- Max 200 stock codes per request
+- Only supports stocks and indices
 
-返回字段说明：
-- plate_type: 行业板块或概念板块
+Return field notes:
+- plate_type: Industry plate or concept plate
 """
 import argparse
 import json
@@ -33,13 +33,13 @@ def get_owner_plate(codes, output_json=False):
     try:
         ctx = create_quote_context()
         ret, data = ctx.get_owner_plate(codes)
-        check_ret(ret, data, ctx, "获取所属板块")
+        check_ret(ret, data, ctx, "get owner plates")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
 
         records = []
@@ -56,7 +56,7 @@ def get_owner_plate(codes, output_json=False):
             print(json.dumps({"data": records}, ensure_ascii=False))
         else:
             print("=" * 60)
-            print("股票所属板块")
+            print("Stock's Plates (Sectors)")
             print("=" * 60)
             current_code = None
             for r in records:
@@ -70,15 +70,15 @@ def get_owner_plate(codes, output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取股票所属板块")
-    parser.add_argument("codes", nargs="+", help="股票代码，如 HK.00700 US.AAPL")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get stock's plates (sectors)")
+    parser.add_argument("codes", nargs="+", help="Stock codes, e.g. HK.00700 US.AAPL")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_owner_plate(args.codes, args.output_json)

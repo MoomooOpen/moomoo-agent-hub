@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-设置到价提醒
+Set Price Reminder
 
-功能：为股票设置到价提醒
-用法：python set_price_reminder.py HK.00700 --op SET --type PRICE_UP --value 400
+Function: Set price reminders for a stock
+Usage: python set_price_reminder.py HK.00700 --op SET --type PRICE_UP --value 400
 
-接口限制：
-- 每 30 秒内最多请求 60 次
-- 每只股票最多 10 个提醒
+API Limits:
+- Max 60 requests per 30 seconds
+- Max 10 reminders per stock
 
-参数说明：
-- op: SET(新增/修改), DEL(删除), DEL_ALL(删除该股票全部), ENABLE(启用), DISABLE(禁用)
-- reminder_type: PRICE_UP(升到), PRICE_DOWN(跌到), CHANGE_RATE_UP(日涨幅超),
-                 CHANGE_RATE_DOWN(日跌幅超), BID_PRICE_UP(买一升到), ASK_PRICE_DOWN(卖一跌到),
-                 TURNOVER_UP(成交量超), TURNOVER_RATE_UP(换手率超)
+Parameters:
+- op: SET (create/modify), DEL (delete), DEL_ALL (delete all for the stock), ENABLE (enable), DISABLE (disable)
+- reminder_type: PRICE_UP (price rises to), PRICE_DOWN (price drops to), CHANGE_RATE_UP (daily gain exceeds),
+                 CHANGE_RATE_DOWN (daily loss exceeds), BID_PRICE_UP (bid price rises to), ASK_PRICE_DOWN (ask price drops to),
+                 TURNOVER_UP (volume exceeds), TURNOVER_RATE_UP (turnover rate exceeds)
 """
 import argparse
 import json
@@ -42,7 +42,7 @@ def set_price_reminder(code, op, reminder_type=None, value=None, reminder_id=Non
         }
         op_enum = op_map.get(op.upper())
         if op_enum is None:
-            raise ValueError(f"不支持的操作: {op}，可选: {list(op_map.keys())}")
+            raise ValueError(f"Unsupported operation: {op}, available: {list(op_map.keys())}")
 
         kwargs = {"code": code, "op": op_enum}
         if reminder_id is not None:
@@ -60,7 +60,7 @@ def set_price_reminder(code, op, reminder_type=None, value=None, reminder_id=Non
             }
             t = type_map.get(reminder_type.upper())
             if t is None:
-                raise ValueError(f"不支持的提醒类型: {reminder_type}")
+                raise ValueError(f"Unsupported reminder type: {reminder_type}")
             kwargs["reminder_type"] = t
         if value is not None:
             kwargs["reminder_freq"] = 0  # ALWAYS
@@ -68,30 +68,30 @@ def set_price_reminder(code, op, reminder_type=None, value=None, reminder_id=Non
 
         ctx = create_quote_context()
         ret, data = ctx.set_price_reminder(**kwargs)
-        check_ret(ret, data, ctx, "设置到价提醒")
+        check_ret(ret, data, ctx, "set price reminder")
 
         if output_json:
             print(json.dumps({"result": str(data)}, ensure_ascii=False))
         else:
-            print(f"设置到价提醒成功: {data}")
+            print(f"Price reminder set successfully: {data}")
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="设置到价提醒")
-    parser.add_argument("code", help="股票代码，如 HK.00700")
-    parser.add_argument("--op", required=True, choices=["SET", "DEL", "DEL_ALL", "ENABLE", "DISABLE"], help="操作类型")
-    parser.add_argument("--type", dest="reminder_type", default=None, help="提醒类型")
-    parser.add_argument("--value", type=float, default=None, help="提醒值")
-    parser.add_argument("--reminder-id", type=int, default=None, help="提醒 ID（修改/删除时使用）")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Set price reminder")
+    parser.add_argument("code", help="Stock code, e.g. HK.00700")
+    parser.add_argument("--op", required=True, choices=["SET", "DEL", "DEL_ALL", "ENABLE", "DISABLE"], help="Operation type")
+    parser.add_argument("--type", dest="reminder_type", default=None, help="Reminder type")
+    parser.add_argument("--value", type=float, default=None, help="Reminder value")
+    parser.add_argument("--reminder-id", type=int, default=None, help="Reminder ID (used for modify/delete)")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     set_price_reminder(args.code, args.op, args.reminder_type, args.value, args.reminder_id, args.output_json)

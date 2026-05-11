@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-取消订阅
+Unsubscribe
 
-功能：取消指定股票的指定数据类型订阅
-用法：python unsubscribe.py HK.00700 --types QUOTE ORDER_BOOK
-      python unsubscribe.py --all  (取消所有订阅)
+Function: Unsubscribe specified data types for specified stocks
+Usage: python unsubscribe.py HK.00700 --types QUOTE ORDER_BOOK
+      python unsubscribe.py --all  (unsubscribe all)
 
-接口限制：
-- 至少订阅一分钟后才可反订阅
+API limitations:
+- Must subscribe for at least one minute before unsubscribing
 """
 import argparse
 import json
@@ -28,15 +28,15 @@ def unsubscribe(codes=None, subtype_names=None, unsubscribe_all=False, output_js
         ctx = create_quote_context()
         if unsubscribe_all:
             ret, msg = ctx.unsubscribe_all()
-            check_ret(ret, msg, ctx, "取消所有订阅")
+            check_ret(ret, msg, ctx, "Unsubscribe all")
             result = {"status": "all_unsubscribed"}
         else:
             if not codes or not subtype_names:
-                print("错误: 需要指定股票代码和订阅类型，或使用 --all 取消所有")
+                print("Error: Must specify stock codes and subscription types, or use --all to unsubscribe all")
                 sys.exit(1)
             subtypes = parse_subtypes(subtype_names)
             ret, msg = ctx.unsubscribe(codes, subtypes)
-            check_ret(ret, msg, ctx, "取消订阅")
+            check_ret(ret, msg, ctx, "Unsubscribe")
             result = {
                 "codes": codes,
                 "subtypes": [str(s).split(".")[-1] for s in subtypes],
@@ -48,29 +48,29 @@ def unsubscribe(codes=None, subtype_names=None, unsubscribe_all=False, output_js
         else:
             print("=" * 50)
             if unsubscribe_all:
-                print("已取消所有订阅")
+                print("All subscriptions cancelled")
             else:
-                print("取消订阅成功")
-                print(f"  股票: {', '.join(codes)}")
-                print(f"  类型: {', '.join(result['subtypes'])}")
+                print("Unsubscription successful")
+                print(f"  Stocks: {', '.join(codes)}")
+                print(f"  Types: {', '.join(result['subtypes'])}")
             print("=" * 50)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="取消订阅")
-    parser.add_argument("codes", nargs="*", help="股票代码")
-    parser.add_argument("--types", nargs="+", default=None, help="订阅类型列表")
-    parser.add_argument("--all", action="store_true", dest="unsub_all", help="取消所有订阅")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Unsubscribe")
+    parser.add_argument("codes", nargs="*", help="Stock codes")
+    parser.add_argument("--types", nargs="+", default=None, help="Subscription type list")
+    parser.add_argument("--all", action="store_true", dest="unsub_all", help="Unsubscribe all")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     unsubscribe(codes=args.codes if args.codes else None,
                 subtype_names=args.types,

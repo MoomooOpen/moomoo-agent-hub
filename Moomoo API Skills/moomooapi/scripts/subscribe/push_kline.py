@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-接收 K 线推送
+Receive Candlestick push
 
-功能：订阅股票 K 线并通过 Handler 接收实时推送数据
-用法：python push_kline.py HK.00700 --ktype K_1M --duration 300
+Function: Subscribe to stock Candlestick and receive real-time push data via Handler
+Usage: python push_kline.py HK.00700 --ktype K_1M --duration 300
 
-接口限制：
-- 需先订阅对应 K 线类型，受订阅额度限制
-- 港股 BMP 权限不支持订阅
+API limitations:
+- Must first subscribe to the corresponding Candlestick type, subject to subscription quota limits
+- HK stock BMP permission does not support subscription
 """
 import argparse
 import json
@@ -22,10 +22,19 @@ from common import (
     safe_float,
     safe_int,
     SubType,
+    Session,
     RET_OK,
 )
 
 from moomoo import CurKlineHandlerBase, RET_ERROR
+
+# session only supports the following values (OVERNIGHT is not supported for subscribe)
+SESSION_MAP = {
+    "NONE": Session.NONE,
+    "RTH": Session.RTH,
+    "ETH": Session.ETH,
+    "ALL": Session.ALL,
+}
 
 KTYPE_SUB_MAP = {
     "K_1M": SubType.K_1M,
@@ -43,7 +52,7 @@ KTYPE_SUB_MAP = {
 
 
 class KlineHandler(CurKlineHandlerBase):
-    """K 线推送回调处理类"""
+    """Candlestick push callback handler class"""
     def __init__(self, output_json=False):
         super().__init__()
         self.output_json = output_json
@@ -54,7 +63,7 @@ class KlineHandler(CurKlineHandlerBase):
             if self.output_json:
                 print(json.dumps({"error": str(data)}, ensure_ascii=False), flush=True)
             else:
-                print(f"推送错误: {data}", flush=True)
+                print(f"Push error: {data}", flush=True)
             return RET_ERROR, data
 
         if self.output_json:
@@ -72,14 +81,15 @@ class KlineHandler(CurKlineHandlerBase):
                 })
             print(json.dumps({"type": "KLINE", "data": records}, ensure_ascii=False), flush=True)
         else:
-            print(f"\n[K线推送] {time.strftime('%H:%M:%S')}")
+            print(f"\n[Candlestick Push] {time.strftime('%H:%M:%S')}")
             print(data.to_string(index=False))
 
         return RET_OK, data
 
 
-def push_kline(codes, ktype="K_1M", duration=300, output_json=False):
+def push_kline(codes, ktype="K_1M", duration=300, session_str="NONE", output_json=False):
     sub_type = KTYPE_SUB_MAP.get(ktype.upper(), SubType.K_1M)
+    session = SESSION_MAP.get(session_str.upper(), Session.NONE)
 
     ctx = None
     try:
@@ -87,34 +97,36 @@ def push_kline(codes, ktype="K_1M", duration=300, output_json=False):
         handler = KlineHandler(output_json=output_json)
         ctx.set_handler(handler)
 
-        ret, msg = ctx.subscribe(codes, [sub_type], subscribe_push=True)
-        check_ret(ret, msg, ctx, "订阅K线推送")
+        ret, msg = ctx.subscribe(codes, [sub_type], subscribe_push=True, session=session)
+        check_ret(ret, msg, ctx, "Subscribe to Candlestick push")
 
         if not output_json:
-            print(f"已订阅 {ktype} K线推送: {', '.join(codes)}")
-            print(f"等待推送 {duration} 秒...")
+            print(f"Subscribed to {ktype} Candlestick push: {', '.join(codes)}")
+            print(f"Waiting for push for {duration} seconds...")
 
         time.sleep(duration)
 
     except KeyboardInterrupt:
         if not output_json:
-            print("\n已停止接收推送")
+            print("\nStopped receiving push")
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="接收 K 线推送")
-    parser.add_argument("codes", nargs="+", help="股票代码，如 HK.00700")
+    parser = argparse.ArgumentParser(description="Receive Candlestick push")
+    parser.add_argument("codes", nargs="+", help="Stock code, e.g. HK.00700")
     parser.add_argument("--ktype", choices=["K_1M", "K_3M", "K_5M", "K_15M", "K_30M", "K_60M", "K_DAY", "K_WEEK", "K_MON", "K_QUARTER", "K_YEAR"],
-                        default="K_1M", help="K 线类型（默认: K_1M）")
-    parser.add_argument("--duration", type=int, default=300, help="持续接收时间（秒，默认: 300）")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default="K_1M", help="Candlestick type (default: K_1M)")
+    parser.add_argument("--duration", type=int, default=300, help="Duration to receive push (seconds, default: 300)")
+    parser.add_argument("--session", choices=["NONE", "RTH", "ETH", "ALL"],
+                        default="NONE", help="US stock trading session (US only, OVERNIGHT not supported)")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
-    push_kline(args.codes, args.ktype, args.duration, args.output_json)
+    push_kline(args.codes, args.ktype, args.duration, args.session, args.output_json)

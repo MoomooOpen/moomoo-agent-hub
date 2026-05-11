@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-获取股票基本信息
+Get Stock Basic Info
 
-功能：获取指定股票的基本信息（名称、每手数量、证券类型、上市日期等）
-用法：python get_stock_info.py US.AAPL,HK.00700
+Function: Get basic information for specified stocks (name, lot size, security type, listing date, etc.)
+Usage: python get_stock_info.py US.AAPL,HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 10 次
-- 每次最多返回 200 个
+API Limits:
+- Max 10 requests per 30 seconds
+- Max 200 results per request
 
-参数说明：
-- code_list: 若传入股票列表只返回指定股票信息，不传返回所有
+Parameter Notes:
+- code_list: If a stock list is provided, only returns info for specified stocks; otherwise returns all
 
-返回字段说明：
-- listing_date: 此字段停止维护
+Return Field Notes:
+- listing_date: This field is no longer maintained
 """
 import argparse
 import json
@@ -39,13 +39,13 @@ def get_stock_info(codes_str, output_json=False):
     try:
         ctx = create_quote_context()
         ret, data = ctx.get_market_snapshot(codes)
-        check_ret(ret, data, ctx, "获取股票信息")
+        check_ret(ret, data, ctx, "get stock info")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
 
         records = []
@@ -65,27 +65,27 @@ def get_stock_info(codes_str, output_json=False):
             print(json.dumps({"data": records}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("股票基本信息")
+            print("Stock Basic Info")
             print("=" * 70)
             for r in records:
                 print(f"\n  {r['code']}  {r['name']}")
-                print(f"    每手: {r['lot_size']}  类型: {r['stock_type']}  上市日: {r['listing_date']}")
-                print(f"    最新价: {r['last_price']}  市值: {r['market_val']}")
+                print(f"    Lot Size: {r['lot_size']}  Type: {r['stock_type']}  Listing Date: {r['listing_date']}")
+                print(f"    Last Price: {r['last_price']}  Market Value: {r['market_val']}")
             print("\n" + "=" * 70)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取股票基本信息")
-    parser.add_argument("codes", help="股票代码（逗号分隔），如 US.AAPL,HK.00700")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get stock basic info")
+    parser.add_argument("codes", help="Stock codes (comma-separated), e.g. US.AAPL,HK.00700")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_stock_info(args.codes, args.output_json)

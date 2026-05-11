@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-获取订单列表
+Get Order List
 
-功能：查询当前账户的今日订单
-用法：python get_orders.py --market HK --trd-env SIMULATE
+Function: Query today's orders for the current account
+Usage: python get_orders.py --market HK --trd-env SIMULATE
 
-接口限制：
-- 同一账户 ID 每 30 秒最多请求 10 次（仅刷新缓存时受限）
+API Limits:
+- Max 10 requests per 30 seconds per account ID (only when refreshing cache)
 
-参数说明：
-- refresh_cache: True 立即请求服务器（受限频限制），False 使用 OpenD 缓存
-- start/end: 格式 YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD HH:MM:SS.MS
+Parameter Description:
+- refresh_cache: True to request from server immediately (subject to rate limit), False to use OpenD cache
+- start/end: Format YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.MS
 
-返回字段说明：
-- qty/dealt_qty: 期权期货单位是"张"
-- price: 精确到小数点后 3 位，超出部分四舍五入
-- dealt_avg_price: 无精度限制
-- create_time/updated_time: 格式 yyyy-MM-dd HH:mm:ss
+Return Field Description:
+- qty/dealt_qty: Unit is "contracts" for options and futures
+- price: Rounded to 3 decimal places
+- dealt_avg_price: No precision limit
+- create_time/updated_time: Format yyyy-MM-dd HH:mm:ss
 """
 import argparse
 import json
@@ -48,17 +48,17 @@ def get_orders(acc_id=None, market=None, trd_env=None, security_firm=None, outpu
     ctx = None
     try:
         ctx = create_trade_context(trd_market, security_firm=parse_security_firm(security_firm))
-        ret, data = ctx.order_list_query(trd_env=trd_env, acc_id=acc_id)
-        check_ret(ret, data, ctx, "查询订单")
+        ret, data = ctx.order_list_query(trd_env=trd_env, acc_id=acc_id, refresh_cache=True)
+        check_ret(ret, data, ctx, "Query orders")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"orders": []}))
             else:
                 print("=" * 70)
-                print(f"订单列表 - 市场: {format_enum(trd_market)}")
+                print(f"Order List - Market: {format_enum(trd_market)}")
                 print("=" * 70)
-                print("\n  暂无订单")
+                print("\n  No orders")
                 print("=" * 70)
             return
 
@@ -80,12 +80,12 @@ def get_orders(acc_id=None, market=None, trd_env=None, security_firm=None, outpu
             print(json.dumps({"market": format_enum(trd_market), "orders": orders}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"订单列表 - 市场: {format_enum(trd_market)}")
+            print(f"Order List - Market: {format_enum(trd_market)}")
             print("=" * 70)
             for o in orders:
-                print(f"\n  订单 ID: {o['order_id']}")
-                print(f"    代码: {o['code']}  方向: {o['side']}  状态: {o['status']}")
-                print(f"    委托: {o['qty']} 股 @ {o['price']}  成交: {o['dealt_qty']} 股 @ {o['dealt_avg_price']}")
+                print(f"\n  Order ID: {o['order_id']}")
+                print(f"    Code: {o['code']}  Side: {o['side']}  Status: {o['status']}")
+                print(f"    Ordered: {o['qty']} shares @ {o['price']}  Dealt: {o['dealt_qty']} shares @ {o['dealt_avg_price']}")
                 print("  " + "-" * 66)
             print("=" * 70)
 
@@ -93,21 +93,21 @@ def get_orders(acc_id=None, market=None, trd_env=None, security_firm=None, outpu
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取今日订单列表")
-    parser.add_argument("--acc-id", type=int, default=None, help="账户 ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="交易市场")
-    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="交易环境")
+    parser = argparse.ArgumentParser(description="Get today's order list")
+    parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
+    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
-                        default=None, help="券商标识")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default=None, help="Security firm identifier")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_orders(acc_id=args.acc_id, market=args.market, trd_env=args.trd_env,
                security_firm=args.security_firm, output_json=args.output_json)

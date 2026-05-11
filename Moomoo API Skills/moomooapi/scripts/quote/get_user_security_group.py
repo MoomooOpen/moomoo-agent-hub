@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-获取自选股分组
+Get Watchlist Groups
 
-功能：获取用户的自选股分组列表
-用法：python get_user_security_group.py
+Function: Get the user's watchlist group list
+Usage: python get_user_security_group.py
 
-接口限制：
-- 每 30 秒内最多请求 60 次
+API Limits:
+- Max 60 requests per 30 seconds
 
-返回字段说明：
-- group_id: 分组 ID
-- group_name: 分组名称
-- group_type: 分组类型
+Return Fields:
+- group_id: Group ID
+- group_name: Group name
+- group_type: Group type
 """
 import argparse
 import json
@@ -44,20 +44,20 @@ def get_user_security_group(group_type=None, output_json=False):
                 kwargs["group_type"] = t
 
         ret, data = ctx.get_user_security_group(**kwargs)
-        check_ret(ret, data, ctx, "获取自选股分组")
+        check_ret(ret, data, ctx, "get watchlist groups")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无自选股分组")
+                print("No watchlist groups")
             return
 
         if output_json:
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("自选股分组")
+            print("Watchlist Groups")
             print("=" * 70)
             print(data.to_string(index=False))
             print("=" * 70)
@@ -66,15 +66,15 @@ def get_user_security_group(group_type=None, output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取自选股分组")
-    parser.add_argument("--group-type", choices=["ALL", "CUSTOM", "SYSTEM"], default=None, help="分组类型")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get watchlist groups")
+    parser.add_argument("--group-type", choices=["ALL", "CUSTOM", "SYSTEM"], default=None, help="Group type")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_user_security_group(args.group_type, args.output_json)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-获取复权因子
+Get Rehabilitation (Adjustment Factor)
 
-功能：获取股票的复权因子列表
-用法：python get_rehab.py HK.00700
+Function: Get the list of adjustment factors for a stock
+Usage: python get_rehab.py HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 60 次
+API Limits:
+- Max 60 requests per 30 seconds
 """
 import argparse
 import json
@@ -27,20 +27,20 @@ def get_rehab(code, output_json=False):
     try:
         ctx = create_quote_context()
         ret, data = ctx.get_rehab(code)
-        check_ret(ret, data, ctx, "获取复权因子")
+        check_ret(ret, data, ctx, "get adjustment factor")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"code": code, "data": []}))
             else:
-                print("无复权因子数据")
+                print("No adjustment factor data")
             return
 
         if output_json:
             print(json.dumps({"code": code, "data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"复权因子 - {code}")
+            print(f"Adjustment Factor - {code}")
             print("=" * 70)
             print(data.to_string(index=False))
             print("=" * 70)
@@ -49,15 +49,15 @@ def get_rehab(code, output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取复权因子")
-    parser.add_argument("code", help="股票代码，如 HK.00700")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get adjustment factor")
+    parser.add_argument("code", help="Stock code, e.g. HK.00700")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_rehab(args.code, args.output_json)

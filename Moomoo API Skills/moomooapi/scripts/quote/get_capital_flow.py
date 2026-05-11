@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-获取资金流向
+Get Capital Flow
 
-功能：获取指定股票的日内分时资金流向数据
-用法：python get_capital_flow.py HK.00700
+Function: Get intraday time-series capital flow data for a stock
+Usage: python get_capital_flow.py HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 30 次
-- 仅支持正股、窝轮和基金
-- 历史周期仅提供最近 1 年数据
+API Limits:
+- Max 30 requests per 30 seconds
+- Only supports equities, warrants, and funds
+- Historical periods only provide data for the most recent 1 year
 
-参数说明：
-- start/end: 格式 yyyy-MM-dd，例如 "2017-06-20"
+Parameter Description:
+- start/end: Format yyyy-MM-dd, e.g. "2017-06-20"
 
-返回字段说明：
-- capital_flow_item_time: 格式 yyyy-MM-dd HH:mm:ss，精确到分钟
-- main_in_flow: 仅历史周期（日、周、月）有效
-- last_valid_time: 仅实时周期有效
+Return Field Description:
+- capital_flow_item_time: Format yyyy-MM-dd HH:mm:ss, accurate to the minute
+- main_in_flow: Only valid for historical periods (day, week, month)
+- last_valid_time: Only valid for real-time period
 """
 import argparse
 import json
@@ -45,13 +45,13 @@ def get_capital_flow(code, period_type=None, start=None, end=None, output_json=F
         if end is not None:
             kwargs["end"] = end
         ret, data = ctx.get_capital_flow(code, **kwargs)
-        check_ret(ret, data, ctx, "获取资金流向")
+        check_ret(ret, data, ctx, "Get capital flow")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"code": code, "data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
 
         if output_json:
@@ -59,7 +59,7 @@ def get_capital_flow(code, period_type=None, start=None, end=None, output_json=F
             print(json.dumps({"code": code, "data": records}, ensure_ascii=False))
         else:
             print("=" * 80)
-            print(f"资金流向: {code}")
+            print(f"Capital Flow: {code}")
             print("=" * 80)
             cols = ["capital_flow_item_time", "last_valid_time", "in_flow",
                     "super_in_flow", "big_in_flow", "mid_in_flow", "sml_in_flow", "main_in_flow"]
@@ -74,19 +74,19 @@ def get_capital_flow(code, period_type=None, start=None, end=None, output_json=F
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取资金流向")
-    parser.add_argument("code", help="股票代码，如 HK.00700")
-    parser.add_argument("--period-type", type=int, default=None, help="周期类型（1=日内, 2=日, 3=周, 4=月）")
-    parser.add_argument("--start", default=None, help="开始日期，如 2024-01-01")
-    parser.add_argument("--end", default=None, help="结束日期，如 2024-12-31")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get capital flow")
+    parser.add_argument("code", help="Stock code, e.g. HK.00700")
+    parser.add_argument("--period-type", type=int, default=None, help="Period type (1=intraday, 2=day, 3=week, 4=month)")
+    parser.add_argument("--start", default=None, help="Start date, e.g. 2024-01-01")
+    parser.add_argument("--end", default=None, help="End date, e.g. 2024-12-31")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_capital_flow(args.code, period_type=args.period_type, start=args.start,
                      end=args.end, output_json=args.output_json)

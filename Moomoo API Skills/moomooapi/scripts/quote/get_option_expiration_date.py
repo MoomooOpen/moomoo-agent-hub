@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-获取期权到期日
+Get Option Expiration Dates
 
-功能：获取指定正股的期权到期日列表
-用法：python get_option_expiration_date.py HK.00700
+Function: Retrieve the list of option expiration dates for a given underlying stock
+Usage: python get_option_expiration_date.py HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 60 次
+API limits:
+- Max 60 requests per 30 seconds
 """
 import argparse
 import json
@@ -27,20 +27,20 @@ def get_option_expiration_date(code, output_json=False):
     try:
         ctx = create_quote_context()
         ret, data = ctx.get_option_expiration_date(code)
-        check_ret(ret, data, ctx, "获取期权到期日")
+        check_ret(ret, data, ctx, "get option expiration dates")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"code": code, "data": []}))
             else:
-                print("无期权到期日数据")
+                print("No option expiration date data")
             return
 
         if output_json:
             print(json.dumps({"code": code, "data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"期权到期日 - {code}")
+            print(f"Option Expiration Dates - {code}")
             print("=" * 70)
             print(data.to_string(index=False))
             print("=" * 70)
@@ -49,15 +49,15 @@ def get_option_expiration_date(code, output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取期权到期日列表")
-    parser.add_argument("code", help="正股代码，如 HK.00700 或 US.AAPL")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get option expiration date list")
+    parser.add_argument("code", help="Underlying stock code, e.g. HK.00700 or US.AAPL")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_option_expiration_date(args.code, args.output_json)

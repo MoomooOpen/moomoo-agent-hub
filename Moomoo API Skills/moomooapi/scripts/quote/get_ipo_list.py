@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-获取 IPO 列表
+Get IPO List
 
-功能：获取指定市场的 IPO 信息列表
-用法：python get_ipo_list.py HK
+Function: Get the IPO information list for a specified market
+Usage: python get_ipo_list.py HK
 
-接口限制：
-- 每 30 秒内最多请求 60 次
+API Limits:
+- Max 60 requests per 30 seconds
 """
 import argparse
 import json
@@ -34,42 +34,42 @@ def get_ipo_list(market_str, output_json=False):
         }
         market = market_map.get(market_str.upper())
         if market is None:
-            raise ValueError(f"不支持的市场: {market_str}，可选: {list(market_map.keys())}")
+            raise ValueError(f"Unsupported market: {market_str}, available options: {list(market_map.keys())}")
 
         ctx = create_quote_context()
         ret, data = ctx.get_ipo_list(market)
-        check_ret(ret, data, ctx, "获取 IPO 列表")
+        check_ret(ret, data, ctx, "Get IPO list")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"market": market_str, "data": []}))
             else:
-                print("无 IPO 数据")
+                print("No IPO data")
             return
 
         if output_json:
             print(json.dumps({"market": market_str, "data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"IPO 列表 - {market_str}")
+            print(f"IPO List - {market_str}")
             print("=" * 70)
             print(data.to_string(index=False))
-            print(f"\n共 {len(data)} 条记录")
+            print(f"\nTotal {len(data)} records")
             print("=" * 70)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取 IPO 列表")
-    parser.add_argument("market", choices=["HK", "US", "SH", "SZ"], help="市场")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get IPO list")
+    parser.add_argument("market", choices=["HK", "US", "SH", "SZ"], help="Market")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_ipo_list(args.market, args.output_json)

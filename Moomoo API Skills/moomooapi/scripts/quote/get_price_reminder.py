@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-获取到价提醒列表
+Get Price Reminder List
 
-功能：获取已设置的到价提醒列表
-用法：python get_price_reminder.py
+Function: Retrieve the list of configured price reminders
+Usage: python get_price_reminder.py
       python get_price_reminder.py HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 60 次
+API limits:
+- Max 60 requests per 30 seconds
 """
 import argparse
 import json
@@ -32,20 +32,20 @@ def get_price_reminder(code=None, output_json=False):
             kwargs["code"] = code
 
         ret, data = ctx.get_price_reminder(**kwargs)
-        check_ret(ret, data, ctx, "获取到价提醒")
+        check_ret(ret, data, ctx, "get price reminders")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无到价提醒")
+                print("No price reminders")
             return
 
         if output_json:
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("到价提醒列表")
+            print("Price Reminder List")
             print("=" * 70)
             print(data.to_string(index=False))
             print("=" * 70)
@@ -54,15 +54,15 @@ def get_price_reminder(code=None, output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取到价提醒列表")
-    parser.add_argument("code", nargs="?", default=None, help="股票代码（可选），不填返回全部")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get price reminder list")
+    parser.add_argument("code", nargs="?", default=None, help="Stock code (optional); omit to return all")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_price_reminder(args.code, args.output_json)

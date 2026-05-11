@@ -1,38 +1,40 @@
 #!/usr/bin/env python3
 """
-公共工具模块 - 提供 Futu OpenAPI 脚本的通用功能
+Common utility module - Provides shared functionality for Futu OpenAPI scripts
 
-包含：
-- 环境变量配置
-- 依赖检查与自动安装
-- OpenD 连接配置
-- 交易环境/市场枚举转换
-- 上下文管理辅助
+Includes:
+- Environment variable configuration
+- Dependency checking and auto-installation
+- OpenD connection configuration
+- Trading environment/market enum conversion
+- Context management helpers
 """
 import os
 import subprocess
 import sys
 import json
+import tempfile
+import time
 from dataclasses import dataclass
 from typing import Optional
 
 
 # ============================================================
-# 环境变量配置
+# Environment Variable Configuration
 # ============================================================
 
 @dataclass
 class FutuConfig:
-    """Futu OpenAPI 配置类"""
-    # 登录凭证
+    """Futu OpenAPI configuration class"""
+    # Login credentials
     login_account: Optional[str] = None
     login_pwd: Optional[str] = None
 
-    # OpenD 连接配置
+    # OpenD connection configuration
     opend_host: str = "127.0.0.1"
     opend_port: int = 11111
 
-    # 交易配置
+    # Trading configuration
     trd_env: str = "SIMULATE"
     default_market: str = "NONE"
     security_firm: Optional[str] = None
@@ -40,20 +42,20 @@ class FutuConfig:
 
 def get_config() -> FutuConfig:
     """
-    获取 Futu OpenAPI 配置
+    Get Futu OpenAPI configuration
 
-    从环境变量中读取配置，未设置的使用默认值。
+    Reads configuration from environment variables, using defaults for unset values.
 
-    环境变量:
-        - FUTU_LOGIN_ACCOUNT: Futu 登录账号
-        - FUTU_LOGIN_PWD: Futu 登录密码
-        - FUTU_OPEND_HOST: OpenD 主机地址 (默认: 127.0.0.1)
-        - FUTU_OPEND_PORT: OpenD 端口 (默认: 11111)
-        - FUTU_TRD_ENV: 交易环境 (默认: SIMULATE)
-        - FUTU_DEFAULT_MARKET: 默认市场 (默认: US)
+    Environment variables:
+        - FUTU_LOGIN_ACCOUNT: Futu login account
+        - FUTU_LOGIN_PWD: Futu login password
+        - FUTU_OPEND_HOST: OpenD host address (default: 127.0.0.1)
+        - FUTU_OPEND_PORT: OpenD port (default: 11111)
+        - FUTU_TRD_ENV: Trading environment (default: SIMULATE)
+        - FUTU_DEFAULT_MARKET: Default market (default: US)
 
     Returns:
-        FutuConfig: 配置对象
+        FutuConfig: Configuration object
     """
     return FutuConfig(
         login_account=os.getenv("FUTU_LOGIN_ACCOUNT", ""),
@@ -67,7 +69,7 @@ def get_config() -> FutuConfig:
 
 
 def _ensure_utf8_io():
-    """Windows 下切换 stdout/stderr 为 UTF-8，避免 GBK 编码错误"""
+    """Switch stdout/stderr to UTF-8 on Windows to avoid GBK encoding errors"""
     if sys.platform != "win32":
         return
     try:
@@ -84,21 +86,120 @@ _ensure_utf8_io()
 
 
 # ============================================================
-# 依赖检查
+# Dependency Checking
 # ============================================================
 
-SDK_MODULE_NAME = "moomoo"  # 固定品牌模块名
+SDK_MODULE_NAME = "moomoo"  # Fixed brand module name
+
+# Must match install-moomoo-opend SKILL.md metadata.version
+# Version stamp file is auto-generated after running /install-moomoo-opend skill to install OpenD
+SKILL_VERSION = "0.1.1"
+STAMP_FILE = os.path.join(os.path.expanduser("~"), ".moomoo_skill_version")
+
+MIN_SDK_VERSION = "10.4.6408"
+
+# ai_type parameter requires SDK >= MIN_SDK_VERSION; skip for older versions
+_sdk_supports_ai_type = True
+
+# Environment check cache: write temp file after first full check, skip within TTL
+_ENV_CHECK_CACHE_FILE = os.path.join(tempfile.gettempdir(), ".moomoo_env_ok")
+_ENV_CHECK_TTL = 3600  # 1 hour
+
+
+def _parse_version(ver_str):
+    """Parse version string into comparable tuple, e.g. '10.4.6408' -> (10, 4, 6408)"""
+    try:
+        return tuple(int(x) for x in ver_str.strip().split("."))
+    except (ValueError, AttributeError):
+        return (0,)
+
+
+def _env_check_is_cached():
+    """Check if a recent successful environment check exists"""
+    try:
+        mtime = os.path.getmtime(_ENV_CHECK_CACHE_FILE)
+        return (time.time() - mtime) < _ENV_CHECK_TTL
+    except OSError:
+        return False
+
+
+def _env_check_mark_ok():
+    """Mark environment check as passed"""
+    try:
+        with open(_ENV_CHECK_CACHE_FILE, "w") as f:
+            f.write(str(time.time()))
+    except OSError:
+        pass
+
+
+def _check_version_stamp():
+    """Check version stamp file to ensure OpenD and SDK were properly installed (warn only, non-blocking)"""
+    try:
+        with open(STAMP_FILE, "r", encoding="utf-8") as f:
+            installed = f.read().strip()
+    except FileNotFoundError:
+        print(f"[WARN] Version stamp file not found: {STAMP_FILE}. Consider running /install-moomoo-opend to install", file=sys.stderr)
+        return
+    if installed != SKILL_VERSION:
+        print(f"[WARN] Version mismatch: installed {installed}, required {SKILL_VERSION}. Consider running /install-moomoo-opend to update", file=sys.stderr)
+
+
+def _check_opend_reachable():
+    """Check if OpenD is reachable"""
+    import socket
+    config = get_config()
+    host, port = config.opend_host, config.opend_port
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(2)
+    try:
+        sock.connect((host, port))
+    except (ConnectionRefusedError, OSError) as e:
+        print(f"[ERROR] Cannot connect to OpenD ({host}:{port}): {e}")
+        print("Please start the OpenD client first")
+        sys.exit(1)
+    finally:
+        sock.close()
+
+
+def _detect_ai_type_support():
+    """Detect whether current SDK supports ai_type parameter (version check only, no warning)"""
+    global _sdk_supports_ai_type
+    try:
+        import moomoo
+        current = getattr(moomoo, "__version__", "0")
+        if _parse_version(current) < _parse_version(MIN_SDK_VERSION):
+            _sdk_supports_ai_type = False
+    except ImportError:
+        pass
 
 
 def ensure_futu_api():
-    """确保 moomoo-api 已安装，未安装则自动安装"""
+    """Environment check with cache: SDK version + stamp + OpenD connectivity. Full check on first run, skip within TTL."""
+    # 1. Cache hit — only do lightweight ai_type support detection
+    if _env_check_is_cached():
+        _detect_ai_type_support()
+        return True
+
+    # 2. Version stamp check
+    _check_version_stamp()
+
+    # 3. SDK import + version check
+    global _sdk_supports_ai_type
     try:
         import moomoo
-        return True
+        current = getattr(moomoo, "__version__", "0")
+        if _parse_version(current) < _parse_version(MIN_SDK_VERSION):
+            _sdk_supports_ai_type = False
+            print(f"[WARN] moomoo-api version too low: {current} < {MIN_SDK_VERSION}. ai_type parameter will be skipped. Consider running /install-moomoo-opend to upgrade SDK", file=sys.stderr)
     except ImportError:
-        pass
-    print("正在安装 moomoo-api...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "moomoo-api"])
+        print("[ERROR] moomoo-api not installed. Please run /install-moomoo-opend")
+        sys.exit(1)
+
+    # 4. OpenD connectivity check
+    _check_opend_reachable()
+
+    # 5. Mark check passed
+    _env_check_mark_ok()
     return True
 
 ensure_futu_api()
@@ -113,6 +214,7 @@ from moomoo import (
         OrderType,
         ModifyOrderOp,
         SubType,
+        Session,
         KLType,
         AuType,
         Market,
@@ -134,43 +236,56 @@ except ImportError:
 
 from moomoo import SecurityFirm
 
+try:
+    from moomoo import OpenCryptoTradeContext
+except ImportError:
+    OpenCryptoTradeContext = None
+
+try:
+    from moomoo import TimeInForce
+except ImportError:
+    TimeInForce = None
+
 
 # ============================================================
-# 连接配置
+# Connection Configuration
 # ============================================================
 
 def get_opend_config():
-    """获取 OpenD 连接配置 -> (host, port)"""
+    """Get OpenD connection configuration -> (host, port)"""
     config = get_config()
     return config.opend_host, config.opend_port
 
 
 def _check_opend_alive(host, port):
-    """快速检测 OpenD 端口是否可连接，不可连接时直接报错退出"""
+    """Quick check if OpenD port is reachable, exit with error if not"""
     import socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
     try:
         sock.connect((host, port))
     except ConnectionRefusedError:
-        print(f"错误: 无法连接 OpenD ({host}:{port})，连接被拒绝。请先启动 OpenD 客户端。")
+        print(f"Error: Cannot connect to OpenD ({host}:{port}), connection refused. Please start the OpenD client first.")
         sys.exit(1)
     except OSError as e:
-        print(f"错误: 无法连接 OpenD ({host}:{port}): {e}。请检查 OpenD 是否已启动。")
+        print(f"Error: Cannot connect to OpenD ({host}:{port}): {e}. Please check if OpenD is running.")
         sys.exit(1)
     finally:
         sock.close()
 
 
 def create_quote_context():
-    """创建行情上下文"""
+    """Create a quote context"""
     host, port = get_opend_config()
     _check_opend_alive(host, port)
-    return OpenQuoteContext(host=host, port=port)
+    kwargs = dict(host=host, port=port)
+    if _sdk_supports_ai_type:
+        kwargs["ai_type"] = 1
+    return OpenQuoteContext(**kwargs)
 
 
 def parse_security_firm(firm_str):
-    """解析券商标识字符串 -> SecurityFirm 枚举，无效时返回 None"""
+    """Parse security firm string -> SecurityFirm enum, returns None if invalid"""
     if not firm_str:
         return None
     key = str(firm_str).strip().upper()
@@ -180,39 +295,73 @@ def parse_security_firm(firm_str):
 
 
 def get_default_security_firm():
-    """获取默认券商标识（从环境变量）"""
+    """Get default security firm (from environment variable)"""
     config = get_config()
     return parse_security_firm(config.security_firm)
 
 
 def create_trade_context(market=None, security_firm=None):
-    """创建交易上下文"""
+    """Create a trade context"""
     host, port = get_opend_config()
     _check_opend_alive(host, port)
     trd_market = parse_market(market) if market else get_default_market()
     kwargs = dict(host=host, port=port, filter_trdmarket=trd_market)
+    if _sdk_supports_ai_type:
+        kwargs["ai_type"] = 1
     if security_firm is not None:
         kwargs["security_firm"] = security_firm
     else:
         default_firm = get_default_security_firm()
-        if default_firm is not None:
-            kwargs["security_firm"] = default_firm
+        kwargs["security_firm"] = default_firm if default_firm is not None else SecurityFirm.NONE
     return OpenSecTradeContext(**kwargs)
 
 
+# Crypto trading context supports only FUTUSECURITIES (HK), FUTUINC (US), FUTUSG (SG)
+CRYPTO_SUPPORTED_FIRMS = ("FUTUSECURITIES", "FUTUINC", "FUTUSG")
+
+
+def create_crypto_trade_context(security_firm=None):
+    """Create a crypto trade context (OpenCryptoTradeContext).
+
+    security_firm only supports FUTUSECURITIES, FUTUINC, FUTUSG.
+    Other firms will cause an error exit.
+    """
+    if OpenCryptoTradeContext is None:
+        print("Error: Current SDK does not support OpenCryptoTradeContext. Upgrade futu-api >= 10.4.6408")
+        sys.exit(1)
+    host, port = get_opend_config()
+    _check_opend_alive(host, port)
+
+    firm_enum = security_firm
+    if firm_enum is None:
+        firm_enum = get_default_security_firm()
+    if firm_enum is None:
+        firm_enum = SecurityFirm.FUTUSECURITIES
+
+    firm_name = format_enum(firm_enum)
+    if firm_name not in CRYPTO_SUPPORTED_FIRMS:
+        print(f"Error: Crypto trading only supports {', '.join(CRYPTO_SUPPORTED_FIRMS)}. Got security_firm={firm_name}")
+        sys.exit(1)
+
+    kwargs = dict(host=host, port=port, security_firm=firm_enum)
+    if _sdk_supports_ai_type:
+        kwargs["ai_type"] = 1
+    return OpenCryptoTradeContext(**kwargs)
+
+
 # ============================================================
-# 枚举转换
+# Enum Conversion
 # ============================================================
 
 def parse_trd_env(env_str):
-    """解析交易环境字符串 -> TrdEnv"""
+    """Parse trading environment string -> TrdEnv"""
     if env_str and str(env_str).upper() == "REAL":
         return TrdEnv.REAL
     return TrdEnv.SIMULATE
 
 
 def parse_market(market_str):
-    """解析交易市场字符串 -> TrdMarket"""
+    """Parse trading market string -> TrdMarket"""
     if not market_str:
         return TrdMarket.US
     mapping = {
@@ -223,22 +372,54 @@ def parse_market(market_str):
         "HKCC": TrdMarket.HKCC,
         "SG": TrdMarket.SG,
     }
+    if hasattr(TrdMarket, "CRYPTO"):
+        mapping["CRYPTO"] = TrdMarket.CRYPTO
+        mapping["CC"] = TrdMarket.CRYPTO
     return mapping.get(str(market_str).upper(), TrdMarket.US)
 
 
-# 股票代码前缀 -> 交易市场映射
+# Stock code prefix -> Trading market mapping
 _CODE_PREFIX_TO_MARKET = {
     "US": "US",
     "HK": "HK",
     "SH": "CN",
     "SZ": "CN",
     "SG": "SG",
+    "CC": "CRYPTO",
 }
 
 
+def is_crypto_code(code):
+    """Check if the code is a crypto code (CC. prefix)."""
+    if not code or "." not in code:
+        return False
+    return code.split(".")[0].upper() == "CC"
+
+
+def parse_qty(qty_str, code=None):
+    """Parse order quantity: crypto allows float, others must be positive integer.
+
+    - Crypto (CC. prefix): float allowed
+    - Others: must be positive integer, else raises ValueError
+    """
+    if qty_str is None:
+        raise ValueError("Quantity cannot be empty")
+    try:
+        val = float(qty_str)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid quantity: {qty_str}")
+    if val <= 0:
+        raise ValueError("Quantity must be positive")
+    if is_crypto_code(code):
+        return val
+    if float(val).is_integer():
+        return int(val)
+    raise ValueError(f"Non-crypto quantity must be integer, got: {qty_str}")
+
+
 def infer_market_from_code(code):
-    """从股票代码前缀推导交易市场字符串，如 US.AAPL -> 'US'，HK.00700 -> 'HK'。
-    无法识别时返回 None。"""
+    """Infer trading market string from stock code prefix, e.g. US.AAPL -> 'US', HK.00700 -> 'HK'.
+    Returns None if unrecognizable."""
     if not code or "." not in code:
         return None
     prefix = code.split(".")[0].upper()
@@ -246,55 +427,55 @@ def infer_market_from_code(code):
 
 
 def parse_trd_side(side_str):
-    """解析交易方向字符串 -> TrdSide"""
+    """Parse trading side string -> TrdSide"""
     if not side_str or str(side_str).strip().upper() not in ("BUY", "SELL"):
-        raise ValueError(f"无效的交易方向: {side_str}，必须为 BUY 或 SELL")
+        raise ValueError(f"Invalid trading side: {side_str}, must be BUY or SELL")
     if str(side_str).strip().upper() == "BUY":
         return TrdSide.BUY
     return TrdSide.SELL
 
 
 def parse_subtypes(subtype_names):
-    """将字符串列表转换为 SubType 枚举列表"""
+    """Convert a list of strings to SubType enum list"""
     subtypes = []
     for name in subtype_names:
         key = str(name).strip().upper()
         if key == "BASIC":
             key = "QUOTE"
         if not hasattr(SubType, key):
-            raise ValueError(f"不支持的订阅类型: {name}")
+            raise ValueError(f"Unsupported subscription type: {name}")
         subtypes.append(getattr(SubType, key))
     return subtypes
 
 
 # ============================================================
-# 配置获取
+# Configuration Retrieval
 # ============================================================
 
 def get_default_acc_id():
-    """获取默认账户 ID"""
+    """Get default account ID"""
     return int(os.getenv("FUTU_ACC_ID", "0"))
 
 
 def get_default_trd_env():
-    """获取默认交易环境"""
+    """Get default trading environment"""
     config = get_config()
     return parse_trd_env(config.trd_env)
 
 
 def get_default_market():
-    """获取默认交易市场"""
+    """Get default trading market"""
     config = get_config()
     return parse_market(config.default_market)
 
 
 
 # ============================================================
-# 数据处理辅助
+# Data Processing Helpers
 # ============================================================
 
 def safe_get(row, *keys, default=""):
-    """安全获取 DataFrame 行或字典中的值，支持多个备选 key"""
+    """Safely get a value from a DataFrame row or dict, supports multiple fallback keys"""
     for key in keys:
         val = row.get(key) if hasattr(row, 'get') else getattr(row, key, None)
         if val is not None:
@@ -303,7 +484,7 @@ def safe_get(row, *keys, default=""):
 
 
 def safe_float(val, default=0.0):
-    """安全转换为 float，遇到 N/A、空串、None 等非数值时返回默认值"""
+    """Safely convert to float, returns default for N/A, empty string, None, etc."""
     if val is None:
         return default
     try:
@@ -313,10 +494,13 @@ def safe_float(val, default=0.0):
 
 
 def safe_int(val, default=0):
-    """安全转换为 int，遇到 N/A、空串、None 等非数值时返回默认值。
-    优先直接 int(val) 避免大整数（如 18 位 acc_id）经 float64 转换后精度丢失。"""
+    """Safely convert to int, returns default for N/A, empty string, None, etc.
+    Handles numpy scalar types to avoid precision loss for large integers (e.g. 18-digit acc_id) via float64."""
     if val is None:
         return default
+    # numpy scalar: extract native Python type to avoid float64 precision loss
+    if hasattr(val, 'item'):
+        val = val.item()
     try:
         return int(val)
     except (ValueError, TypeError):
@@ -327,18 +511,18 @@ def safe_int(val, default=0):
 
 
 def format_enum(val):
-    """格式化枚举值为字符串"""
+    """Format enum value as string"""
     if hasattr(val, "name"):
         return val.name
     return str(val)
 
 
 # ============================================================
-# 上下文管理辅助
+# Context Management Helpers
 # ============================================================
 
 def safe_close(ctx):
-    """安全关闭上下文"""
+    """Safely close a context"""
     try:
         if ctx:
             ctx.close()
@@ -347,7 +531,7 @@ def safe_close(ctx):
 
 
 def _is_permission_error(error_msg):
-    """检测错误信息是否为行情权限不足"""
+    """Check if the error message indicates insufficient quote permissions"""
     keywords = [
         "权限", "没有权限", "权限不足", "无权限",
         "no permission", "permission denied", "not permission",
@@ -362,16 +546,16 @@ def _is_permission_error(error_msg):
 
 
 _MARKET_NAMES = {
-    "HK": "港股", "US": "美股",
-    "SH": "A股", "SZ": "A股",
-    "SG": "新加坡",
+    "HK": "HK stocks", "US": "US stocks",
+    "SH": "A-shares", "SZ": "A-shares",
+    "SG": "Singapore",
 }
 
 _AUTHORITY_URLS = {"moomoo": "https://openapi.moomoo.com/moomoo-api-doc/en/intro/authority.html"}
 
 
 def _detect_market_from_argv():
-    """从命令行参数中的股票代码检测市场（如 HK.00700 -> 港股）"""
+    """Detect market from stock code in command-line arguments (e.g. HK.00700 -> HK stocks)"""
     import re
     for arg in sys.argv[1:]:
         m = re.match(r'^(HK|US|SH|SZ|SG)\.', arg, re.IGNORECASE)
@@ -381,35 +565,35 @@ def _detect_market_from_argv():
 
 
 def _get_authority_url():
-    """返回行情权限页面链接"""
+    """Return the quote permission page URL"""
     return _AUTHORITY_URLS["moomoo"]
 
 
 
 def _build_permission_hint():
-    """构建行情权限不足的提示信息"""
+    """Build a hint message for insufficient quote permissions"""
     market = _detect_market_from_argv()
-    market_prefix = f"{market}" if market else ""
+    market_prefix = f"{market} " if market else ""
     url = _get_authority_url()
     return (
-        f"\n\n{market_prefix}行情权限不足，请购买对应行情卡以获取数据。"
-        f"详情参考：{url}"
+        f"\n\n{market_prefix}quote permissions insufficient. Please purchase the corresponding quote package to access data. "
+        f"Details: {url}"
     )
 
 
 
 def _build_permission_hint_json():
-    """构建 JSON 格式的行情权限提示字段"""
+    """Build JSON-format quote permission hint fields"""
     market = _detect_market_from_argv()
-    market_prefix = f"{market}" if market else ""
-    hint = f"{market_prefix}行情权限不足，请购买对应行情卡以获取数据"
+    market_prefix = f"{market} " if market else ""
+    hint = f"{market_prefix}quote permissions insufficient. Please purchase the corresponding quote package to access data"
     url = _get_authority_url()
     return {"hint": hint, "authority_url": url}
 
 
 
-def check_ret(ret, data, ctx=None, action="操作", output_json=None):
-    """检查 API 返回值，失败则打印错误并退出"""
+def check_ret(ret, data, ctx=None, action="operation", output_json=None):
+    """Check API return value, print error and exit on failure"""
     if ret != RET_OK:
         if output_json is None:
             try:
@@ -425,7 +609,7 @@ def check_ret(ret, data, ctx=None, action="操作", output_json=None):
                 err_obj.update(_build_permission_hint_json())
             print(json.dumps(err_obj, ensure_ascii=False))
         else:
-            print(f"{action}失败: {data}")
+            print(f"{action} failed: {data}")
             if perm_error:
                 print(_build_permission_hint())
         safe_close(ctx)
@@ -433,7 +617,7 @@ def check_ret(ret, data, ctx=None, action="操作", output_json=None):
 
 
 def is_empty(data):
-    """检查数据是否为空"""
+    """Check if data is empty"""
     if data is None:
         return True
     if hasattr(data, "shape"):
@@ -444,7 +628,7 @@ def is_empty(data):
 
 
 def to_jsonable(val, default=None):
-    """将值转为 JSON 可序列化类型"""
+    """Convert a value to a JSON-serializable type"""
     import math
     if val is None:
         return default
@@ -460,7 +644,7 @@ def to_jsonable(val, default=None):
 
 
 def df_to_records(df, limit=None):
-    """将 DataFrame 转为 JSON 可序列化的记录列表"""
+    """Convert a DataFrame to a JSON-serializable list of records"""
     if is_empty(df):
         return []
     total = len(df)
@@ -468,5 +652,14 @@ def df_to_records(df, limit=None):
     records = []
     for i in range(n):
         row = df.iloc[i] if hasattr(df, "iloc") else df[i]
-        records.append({k: to_jsonable(row.get(k)) for k in row.index})
+        if hasattr(row, "index"):
+            keys = row.index
+        elif isinstance(row, dict):
+            keys = row.keys()
+        else:
+            keys = [k for k in dir(row) if not k.startswith("_")]
+        records.append({
+            k: to_jsonable(row.get(k) if hasattr(row, "get") else getattr(row, k, None))
+            for k in keys
+        })
     return records

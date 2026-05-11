@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-获取用户信息（行情权限）
+Get User Info (Quote Permissions)
 
-功能：查询当前用户的行情权限等级、订阅额度等信息
-用法：python get_user_info.py
+Function: Query the current user's quote permission level, subscription quota, etc.
+Usage: python get_user_info.py
 
-接口限制：
-- 无特殊限频
+API Limits:
+- No special rate limit
 """
 import argparse
 import json
@@ -19,27 +19,27 @@ from common import (
 )
 
 
-# 权限等级说明
+# Permission level descriptions
 QOT_RIGHT_DESC = {
-    "N/A": "未知",
-    "NO": "无权限",
-    "BMP": "BMP（基础摘要）",
+    "N/A": "Unknown",
+    "NO": "No permission",
+    "BMP": "BMP (Basic Summary)",
     "LV1": "LV1",
     "LV2": "LV2",
-    "SF": "SF（已开通高级行情）",
+    "SF": "SF (Advanced Quote Enabled)",
 }
 
-# 权限字段 -> 显示名称
+# Permission field -> Display name
 QOT_RIGHT_FIELDS = {
-    "hk_qot_right": "港股",
-    "us_qot_right": "美股",
-    "cn_qot_right": "A股",
-    "hk_option_qot_right": "港股期权",
-    "hk_future_qot_right": "港股期货",
-    "us_option_qot_right": "美股期权",
-    "us_future_qot_right": "美股期货",
-    "sg_future_qot_right": "新加坡期货",
-    "jp_future_qot_right": "日本期货",
+    "hk_qot_right": "HK Stocks",
+    "us_qot_right": "US Stocks",
+    "cn_qot_right": "A-Shares",
+    "hk_option_qot_right": "HK Options",
+    "hk_future_qot_right": "HK Futures",
+    "us_option_qot_right": "US Options",
+    "us_future_qot_right": "US Futures",
+    "sg_future_qot_right": "SG Futures",
+    "jp_future_qot_right": "JP Futures",
 }
 
 
@@ -49,21 +49,21 @@ def get_user_info(output_json=False):
         ctx = create_quote_context()
         ret, data = ctx.get_user_info()
         if ret != 0:
-            raise RuntimeError(f"获取用户信息失败: {data}")
+            raise RuntimeError(f"Failed to get user info: {data}")
 
         if output_json:
             print(json.dumps(data, ensure_ascii=False))
         else:
             print("=" * 50)
-            print("用户信息")
+            print("User Info")
             print("=" * 50)
-            print(f"  昵称:          {data.get('nick_name', 'N/A')}")
-            print(f"  用户ID:        {data.get('user_id', 'N/A')}")
-            print(f"  用户属性:      {data.get('user_attr', 'N/A')}")
-            print(f"  订阅额度:      {data.get('sub_quota', 'N/A')}")
-            print(f"  历史K线额度:   {data.get('history_kl_quota', 'N/A')}")
+            print(f"  Nickname:          {data.get('nick_name', 'N/A')}")
+            print(f"  User ID:           {data.get('user_id', 'N/A')}")
+            print(f"  User Attribute:    {data.get('user_attr', 'N/A')}")
+            print(f"  Sub Quota:         {data.get('sub_quota', 'N/A')}")
+            print(f"  History KL Quota:  {data.get('history_kl_quota', 'N/A')}")
             print()
-            print("  行情权限:")
+            print("  Quote Permissions:")
             for field, label in QOT_RIGHT_FIELDS.items():
                 level = data.get(field, "N/A")
                 desc = QOT_RIGHT_DESC.get(level, level)
@@ -74,14 +74,14 @@ def get_user_info(output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取用户信息（行情权限）")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get user info (quote permissions)")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_user_info(args.output_json)

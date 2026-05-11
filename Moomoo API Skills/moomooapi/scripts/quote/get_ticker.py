@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-获取逐笔成交数据
+Get Ticker (Tick-by-Tick) Data
 
-功能：获取指定股票的最近逐笔成交记录
-用法：python get_ticker.py HK.00700 --num 20
+Function: Get recent tick-by-tick trade records for the specified stock
+Usage: python get_ticker.py HK.00700 --num 20
 
-接口限制：
-- 需先订阅 TICKER 类型
-- 最多获取最近 1000 个逐笔
-- 港股期权期货在 LV1 权限下，不支持获取逐笔
+API Limits:
+- Must subscribe to TICKER type first
+- Max 1000 recent ticks
+- HK options/futures under LV1 permission do not support tick-by-tick data
 
-返回字段说明：
-- time: 格式 yyyy-MM-dd HH:mm:ss:xxx，港股/A 股北京时间，美股美东时间
-- volume: 单位：股
+Return Field Notes:
+- time: Format yyyy-MM-dd HH:mm:ss:xxx, Beijing time for HK/A-shares, US Eastern time for US stocks
+- volume: Unit: shares
 """
 import argparse
 import json
@@ -38,17 +38,17 @@ def get_ticker(code, num=20, output_json=False):
         ctx = create_quote_context()
         ret, msg = ctx.subscribe([code], [SubType.TICKER])
         if ret != RET_OK:
-            print(f"订阅失败: {msg}")
+            print(f"Subscription failed: {msg}")
             sys.exit(1)
 
         ret, data = ctx.get_rt_ticker(code, num=num)
-        check_ret(ret, data, ctx, "获取逐笔")
+        check_ret(ret, data, ctx, "get ticker data")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"code": code, "data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
 
         records = []
@@ -66,28 +66,28 @@ def get_ticker(code, num=20, output_json=False):
             print(json.dumps({"code": code, "data": records}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"逐笔成交: {code}（最近 {num} 笔）")
+            print(f"Tick-by-Tick Trades: {code} (Last {num} ticks)")
             print("=" * 70)
-            print(f"  {'时间':<20} {'价格':>10} {'成交量':>10} {'方向':>8}")
+            print(f"  {'Time':<20} {'Price':>10} {'Volume':>10} {'Direction':>10}")
             print("  " + "-" * 50)
             for r in records:
-                print(f"  {r['time']:<20} {r['price']:>10.3f} {r['volume']:>10} {r['direction']:>8}")
+                print(f"  {r['time']:<20} {r['price']:>10.3f} {r['volume']:>10} {r['direction']:>10}")
             print("=" * 70)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取逐笔成交数据")
-    parser.add_argument("code", help="股票代码，如 HK.00700")
-    parser.add_argument("--num", type=int, default=20, help="返回笔数（默认: 20）")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get tick-by-tick trade data")
+    parser.add_argument("code", help="Stock code, e.g. HK.00700")
+    parser.add_argument("--num", type=int, default=20, help="Number of ticks (default: 20)")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_ticker(args.code, args.num, args.output_json)

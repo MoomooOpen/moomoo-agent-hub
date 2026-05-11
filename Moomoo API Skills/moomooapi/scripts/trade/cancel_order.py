@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-撤单
+Cancel Order
 
-功能：撤销指定订单
-用法：python cancel_order.py --order-id 12345678
+Function: Cancel a specified order
+Usage: python cancel_order.py --order-id 12345678
 
-接口限制：
-- 同一账户 ID 每 30 秒最多请求 20 次
-- 连续两次间隔不可小于 0.04 秒
-- 真实账户需先在 OpenD GUI 界面手动解锁交易密码
+API Limits:
+- Max 20 requests per 30 seconds per account ID
+- Min interval of 0.04 seconds between two consecutive requests
+- Real accounts require manually unlocking the trade password in the OpenD GUI
 
-参数说明：
-- order_id: 要撤销的订单 ID
-- trdmarket: cancel_all_order 时可指定市场，默认撤销所有市场的订单
+Parameter Description:
+- order_id: The order ID to cancel
+- trdmarket: Can specify a market when using cancel_all_order; defaults to cancelling orders in all markets
 """
 import argparse
 import json
@@ -34,7 +34,7 @@ from common import (
 
 
 def _audit_log(entry):
-    """追加交易审计日志到 ~/.futu_trade_audit.jsonl"""
+    """Append trade audit log to ~/.futu_trade_audit.jsonl"""
     import datetime
     try:
         log_path = _os.path.join(_os.path.expanduser("~"), ".futu_trade_audit.jsonl")
@@ -61,7 +61,7 @@ def cancel_order(order_id, acc_id=None, market=None, trd_env=None, security_firm
             trd_env=trd_env,
             acc_id=acc_id,
         )
-        check_ret(ret, data, ctx, "撤单")
+        check_ret(ret, data, ctx, "Cancel order")
 
         result = {"order_id": order_id, "status": "cancelled"}
 
@@ -71,9 +71,9 @@ def cancel_order(order_id, acc_id=None, market=None, trd_env=None, security_firm
             print(json.dumps(result, ensure_ascii=False))
         else:
             print("=" * 50)
-            print("撤单成功")
+            print("Order cancelled successfully")
             print("=" * 50)
-            print(f"  订单 ID: {order_id}")
+            print(f"  Order ID: {order_id}")
             print("=" * 50)
 
     except Exception as e:
@@ -81,22 +81,22 @@ def cancel_order(order_id, acc_id=None, market=None, trd_env=None, security_firm
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="撤单")
-    parser.add_argument("--order-id", required=True, help="订单 ID")
-    parser.add_argument("--acc-id", type=int, default=None, help="账户 ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="交易市场")
-    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="交易环境")
+    parser = argparse.ArgumentParser(description="Cancel order")
+    parser.add_argument("--order-id", required=True, help="Order ID")
+    parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
+    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
-                        default=None, help="券商标识")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default=None, help="Security firm identifier")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     cancel_order(order_id=args.order_id, acc_id=args.acc_id, market=args.market,
                  trd_env=args.trd_env, security_firm=args.security_firm, output_json=args.output_json)

@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-获取实时报价
+Get Real-Time Quote
 
-功能：获取已订阅股票的实时报价数据
-用法：python get_stock_quote.py HK.00700 US.AAPL
+Function: Get real-time quote data for subscribed stocks
+Usage: python get_stock_quote.py HK.00700 US.AAPL
 
-接口限制：
-- 需先通过 subscribe 接口订阅 QUOTE 类型
-- 订阅后内置 3 秒等待逻辑，超过 3 秒返回空数据
+API Limits:
+- Must subscribe to QUOTE type via subscribe interface first
+- Built-in 3-second wait after subscription; returns empty data if exceeded
 
-返回字段说明：
-- last_price: 最新价
-- open_price/high_price/low_price/prev_close_price: 开高低昨收
-- volume: 成交量
-- turnover: 成交额
-- amplitude: 振幅（百分比，20 实际对应 20%）
-- turnover_rate: 换手率（百分比）
-- suspension: True 表示停牌
+Return Field Notes:
+- last_price: Last traded price
+- open_price/high_price/low_price/prev_close_price: Open/High/Low/Previous Close
+- volume: Trading volume
+- turnover: Trading turnover
+- amplitude: Amplitude (percentage, 20 corresponds to 20%)
+- turnover_rate: Turnover rate (percentage)
+- suspension: True indicates trading halt
 """
 import argparse
 import json
@@ -38,16 +38,16 @@ def get_stock_quote(codes, output_json=False):
     try:
         ctx = create_quote_context()
         ret, msg = ctx.subscribe(codes, [SubType.QUOTE])
-        check_ret(ret, msg, ctx, "订阅报价")
+        check_ret(ret, msg, ctx, "subscribe quote")
 
         ret, data = ctx.get_stock_quote(codes)
-        check_ret(ret, data, ctx, "获取实时报价")
+        check_ret(ret, data, ctx, "get real-time quote")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
 
         if output_json:
@@ -56,7 +56,7 @@ def get_stock_quote(codes, output_json=False):
             cols = [c for c in ['code', 'name', 'last_price', 'open_price', 'high_price',
                                 'low_price', 'volume', 'turnover'] if c in data.columns]
             print("=" * 70)
-            print("实时报价")
+            print("Real-Time Quote")
             print("=" * 70)
             print(data[cols].to_string(index=False))
             print("=" * 70)
@@ -65,15 +65,15 @@ def get_stock_quote(codes, output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取实时报价（需先订阅）")
-    parser.add_argument("codes", nargs="+", help="股票代码，如 HK.00700")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get real-time quote (subscription required)")
+    parser.add_argument("codes", nargs="+", help="Stock codes, e.g. HK.00700")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_stock_quote(args.codes, args.output_json)

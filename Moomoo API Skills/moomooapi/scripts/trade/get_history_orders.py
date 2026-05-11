@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-获取历史订单
+Get History Orders
 
-功能：查询账户的历史订单记录
-用法：python get_history_orders.py --market HK --start 2026-01-01 --end 2026-03-01
+Function: Query the historical order records of an account
+Usage: python get_history_orders.py --market HK --start 2026-01-01 --end 2026-03-01
 
-接口限制：
-- 同一账户 ID 每 30 秒最多请求 10 次
+API Limits:
+- Max 10 requests per 30 seconds per account ID
 
-参数说明：
-- start/end: 格式 YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD HH:MM:SS.MS
+Parameter Description:
+- start/end: Format YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.MS
 
-返回字段说明：
-- qty/dealt_qty: 期权期货单位是"张"
-- price: 精确到小数点后 3 位，超出部分四舍五入
-- dealt_avg_price: 无精度限制
-- create_time/updated_time: 格式 yyyy-MM-dd HH:mm:ss
+Return Field Description:
+- qty/dealt_qty: Unit is "contracts" for options and futures
+- price: Rounded to 3 decimal places
+- dealt_avg_price: No precision limit
+- create_time/updated_time: Format yyyy-MM-dd HH:mm:ss
 """
 import argparse
 import json
@@ -65,13 +65,13 @@ def get_history_orders(acc_id=None, market=None, trd_env=None, code=None,
                 kwargs["status_filter_list"] = status_filter
 
         ret, data = ctx.history_order_list_query(**kwargs)
-        check_ret(ret, data, ctx, "查询历史订单")
+        check_ret(ret, data, ctx, "Query history orders")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"orders": []}))
             else:
-                print("暂无历史订单")
+                print("No history orders")
             return
 
         orders = []
@@ -90,41 +90,47 @@ def get_history_orders(acc_id=None, market=None, trd_env=None, code=None,
                 "updated_time": safe_get(row, "updated_time", default=""),
             })
 
+        no_date_filter = not start and not end
         if output_json:
-            print(json.dumps({"count": len(orders), "orders": orders}, ensure_ascii=False))
+            result = {"count": len(orders), "orders": orders}
+            if no_date_filter:
+                result["note"] = "Default query returns last 90 days only. Specify --start/--end for older orders."
+            print(json.dumps(result, ensure_ascii=False))
         else:
             print("=" * 80)
-            print(f"历史订单（共 {len(orders)} 条）")
+            print(f"History Orders (Total {len(orders)})")
+            if no_date_filter:
+                print("Note: Default query returns last 90 days only. Specify --start/--end for older orders.")
             print("=" * 80)
             for o in orders:
                 print(f"  [{o['create_time']}] {o['order_id']}  {o['code']}  {o['side']}  "
-                      f"{o['qty']}股@{o['price']}  成交:{o['dealt_qty']}  {o['status']}")
+                      f"{o['qty']} shares@{o['price']}  Dealt:{o['dealt_qty']}  {o['status']}")
             print("=" * 80)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取历史订单")
-    parser.add_argument("--acc-id", type=int, default=None, help="账户 ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="交易市场")
-    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="交易环境")
-    parser.add_argument("--code", default=None, help="股票代码过滤")
-    parser.add_argument("--start", default=None, help="开始日期（YYYY-MM-DD）")
-    parser.add_argument("--end", default=None, help="结束日期（YYYY-MM-DD）")
-    parser.add_argument("--status", nargs="+", default=None, help="订单状态过滤（如 FILLED_ALL CANCELLED_ALL）")
-    parser.add_argument("--limit", type=int, default=200, help="返回数量限制")
+    parser = argparse.ArgumentParser(description="Get history orders")
+    parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
+    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
+    parser.add_argument("--code", default=None, help="Stock code filter")
+    parser.add_argument("--start", default=None, help="Start date (YYYY-MM-DD)")
+    parser.add_argument("--end", default=None, help="End date (YYYY-MM-DD)")
+    parser.add_argument("--status", nargs="+", default=None, help="Order status filter (e.g. FILLED_ALL CANCELLED_ALL)")
+    parser.add_argument("--limit", type=int, default=200, help="Return count limit")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
-                        default=None, help="券商标识")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default=None, help="Security firm identifier")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_history_orders(acc_id=args.acc_id, market=args.market, trd_env=args.trd_env,
                        code=args.code, start=args.start, end=args.end,

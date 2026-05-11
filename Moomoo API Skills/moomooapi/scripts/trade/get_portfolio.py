@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 """
-获取持仓与资金
+Get Positions and Funds
 
-功能：查询账户的资金状况和持仓列表
-用法：python get_portfolio.py --market HK --trd-env SIMULATE
+Function: Query account fund status and position list
+Usage: python get_portfolio.py --market HK --trd-env SIMULATE
 
-接口限制：
-- 同一账户 ID 每 30 秒最多请求 10 次（仅刷新缓存时受限）
+API Limits:
+- Max 10 requests per 30 seconds per account ID (only when refreshing cache)
 
-参数说明：
-- currency: 仅期货账户、综合证券账户适用，其它账户类型忽略此参数；返回的资金字段会以此币种换算
-- refresh_cache: True 立即请求服务器（受限频限制），False 使用 OpenD 缓存
+Parameter Description:
+- currency: Only applicable to futures accounts and consolidated securities accounts; other account types ignore this parameter; returned fund fields will be converted to this currency
+- refresh_cache: True to request from server immediately (subject to rate limit), False to use OpenD cache
 
-返回字段说明：
-- power（购买力）: 按 50% 融资初始保证金率计算的近似值，建议用 get_max_trd_qtys 获取精确值
-- total_assets: 总资产净值 = 证券资产净值 + 基金资产净值 + 债券资产净值
-- market_val: 仅证券账户适用
-- avl_withdrawal_cash: 仅证券账户适用
-- currency: 仅综合证券账户、期货账户适用
-- pl_ratio_avg_cost（持仓盈亏比/均价口径）: 百分比字段，20 实际对应 20%，期货不适用
-- average_cost: 平均成本价（与 APP 一致），禁止使用 cost_price（摊薄成本）
-- unrealized_pl: 未实现盈亏（均价口径），禁止使用 pl_val（摊薄成本口径）
+Return Field Description:
+- power (buying power): Approximate value calculated at 50% initial margin ratio; use get_max_trd_qtys for precise values
+- total_assets: Total net asset value = securities net value + fund net value + bond net value
+- market_val: Only applicable to securities accounts
+- avl_withdrawal_cash: Only applicable to securities accounts
+- currency: Only applicable to consolidated securities accounts and futures accounts
+- pl_ratio_avg_cost (P/L ratio by average cost): Percentage field, 20 means 20%, not applicable to futures
+- average_cost: Average cost price (consistent with APP); do not use cost_price (diluted cost)
+- unrealized_pl: Unrealized P/L (average cost basis); do not use pl_val (diluted cost basis)
 """
 import argparse
 import json
@@ -51,12 +51,12 @@ def get_portfolio(acc_id=None, market=None, trd_env=None, currency=None, securit
     ctx = None
     try:
         ctx = create_trade_context(market, security_firm=parse_security_firm(security_firm))
-        # 查询资金
-        query_kwargs = dict(trd_env=trd_env, acc_id=acc_id)
+        # Query funds (refresh_cache=True to avoid stale data, especially for paper trading)
+        query_kwargs = dict(trd_env=trd_env, acc_id=acc_id, refresh_cache=True)
         if currency:
             query_kwargs["currency"] = currency
         ret, acc_data = ctx.accinfo_query(**query_kwargs)
-        check_ret(ret, acc_data, ctx, "查询账户资金")
+        check_ret(ret, acc_data, ctx, "Query account funds")
 
         funds = {}
         if not is_empty(acc_data):
@@ -65,8 +65,8 @@ def get_portfolio(acc_id=None, market=None, trd_env=None, currency=None, securit
             initial_margin = safe_float(safe_get(row, "initial_margin", default=0))
             available_funds_raw = safe_get(row, "available_funds", default="N/A")
             available_funds = safe_float(available_funds_raw)
-            # available_funds 对部分账户类型返回 N/A，用 total_assets - initial_margin 计算
-            # 仅在原始值为 'N/A' 或缺失时进行回退，避免将真实的 0 误识别为缺失
+            # available_funds returns N/A for some account types, fallback to total_assets - initial_margin
+            # Only fall back when the raw value is 'N/A' or missing, to avoid misidentifying a real 0 as missing
             if str(available_funds_raw) == "N/A" or available_funds_raw in (None, ""):
                 available_funds = total_assets - initial_margin if initial_margin > 0 else total_assets
             funds = {
@@ -87,9 +87,9 @@ def get_portfolio(acc_id=None, market=None, trd_env=None, currency=None, securit
                 "ca_cash": safe_float(safe_get(row, "ca_cash", default=0)),
             }
 
-        # 查询持仓
-        ret, pos_data = ctx.position_list_query(trd_env=trd_env, acc_id=acc_id)
-        check_ret(ret, pos_data, ctx, "查询持仓")
+        # Query positions (refresh_cache=True to avoid stale data)
+        ret, pos_data = ctx.position_list_query(trd_env=trd_env, acc_id=acc_id, refresh_cache=True)
+        check_ret(ret, pos_data, ctx, "Query positions")
 
         positions = []
         if not is_empty(pos_data):
@@ -113,43 +113,43 @@ def get_portfolio(acc_id=None, market=None, trd_env=None, currency=None, securit
             print(json.dumps({"funds": funds, "positions": positions}, ensure_ascii=False))
         else:
             print("=" * 70)
-            ccy_label = f"  货币: {funds.get('currency', 'N/A')}" if funds else ""
-            print(f"账户概览 (环境: {format_enum(trd_env)}){ccy_label}")
+            ccy_label = f"  Currency: {funds.get('currency', 'N/A')}" if funds else ""
+            print(f"Account Overview (Environment: {format_enum(trd_env)}){ccy_label}")
             print("=" * 70)
             if funds:
-                print(f"\n  总资产: {funds['total_assets']:.2f}  现金: {funds['cash']:.2f}  购买力: {funds['power']:.2f}")
-                print(f"  持仓市值: {funds['market_val']:.2f}  可用资金: {funds['available_funds']:.2f}  冻结: {funds['frozen_cash']:.2f}")
-            print(f"\n  {'持仓列表':=^66}")
+                print(f"\n  Total Assets: {funds['total_assets']:.2f}  Cash: {funds['cash']:.2f}  Buying Power: {funds['power']:.2f}")
+                print(f"  Position Value: {funds['market_val']:.2f}  Available Funds: {funds['available_funds']:.2f}  Frozen: {funds['frozen_cash']:.2f}")
+            print(f"\n  {'Position List':=^66}")
             if positions:
-                print(f"  {'代码':<12} {'名称':<10} {'数量':>8} {'均价':>10} {'市值':>12} {'盈亏%':>8}")
+                print(f"  {'Code':<12} {'Name':<10} {'Qty':>8} {'Avg Cost':>10} {'Value':>12} {'P/L%':>8}")
                 print("  " + "-" * 66)
                 for p in positions:
                     print(f"  {p['code']:<12} {p['name']:<10} {p['qty']:>8.0f} {p['average_cost']:>10.2f} {p['market_val']:>12.2f} {p['pl_ratio_avg_cost']:>8.2f}%")
             else:
-                print("  暂无持仓")
+                print("  No positions")
             print("=" * 70)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取持仓与资金")
-    parser.add_argument("--acc-id", type=int, default=None, help="账户 ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="交易市场")
-    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="交易环境")
+    parser = argparse.ArgumentParser(description="Get positions and funds")
+    parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
+    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--currency", choices=["HKD", "USD", "CNH", "JPY", "AUD", "CAD", "MYR", "SGD"], default=None,
-                        help="货币类型（默认由服务端决定）")
+                        help="Currency type (default determined by server)")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
-                        default=None, help="券商标识")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default=None, help="Security firm identifier")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_portfolio(acc_id=args.acc_id, market=args.market, trd_env=args.trd_env,
                   currency=args.currency, security_firm=args.security_firm, output_json=args.output_json)

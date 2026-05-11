@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-获取分时数据
+Get Real-Time Data (Time-Sharing)
 
-功能：获取指定股票的当日分时（Time-Sharing）数据
-用法：python get_rt_data.py HK.00700
+Function: Get intraday time-sharing data for the specified stock
+Usage: python get_rt_data.py HK.00700
 
-接口限制：
-- 需先订阅 RT_DATA 类型
+API Limits:
+- Must subscribe to RT_DATA type first
 
-返回字段说明：
-- time: 格式 yyyy-MM-dd HH:mm:ss，港股/A 股北京时间，美股美东时间
-- is_blank: False 正常数据，True 伪造数据（非交易时段填充）
-- avg_price: 期权该字段为 N/A
+Return Field Notes:
+- time: Format yyyy-MM-dd HH:mm:ss, Beijing time for HK/A-shares, US Eastern time for US stocks
+- is_blank: False for normal data, True for synthetic data (padded during non-trading hours)
+- avg_price: This field is N/A for options
 """
 import argparse
 import json
@@ -37,17 +37,17 @@ def get_rt_data(code, output_json=False):
         ctx = create_quote_context()
         ret, msg = ctx.subscribe([code], [SubType.RT_DATA])
         if ret != RET_OK:
-            print(f"订阅失败: {msg}")
+            print(f"Subscription failed: {msg}")
             sys.exit(1)
 
         ret, data = ctx.get_rt_data(code)
-        check_ret(ret, data, ctx, "获取分时数据")
+        check_ret(ret, data, ctx, "get real-time data")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"code": code, "data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
 
         records = []
@@ -65,9 +65,9 @@ def get_rt_data(code, output_json=False):
             print(json.dumps({"code": code, "data": records}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"分时数据: {code}")
+            print(f"Real-Time Data: {code}")
             print("=" * 70)
-            print(f"  {'时间':<20} {'价格':>10} {'均价':>10} {'成交量':>12}")
+            print(f"  {'Time':<20} {'Price':>10} {'Avg Price':>10} {'Volume':>12}")
             print("  " + "-" * 54)
             for r in records:
                 print(f"  {r['time']:<20} {r['price']:>10.3f} {r['avg_price']:>10.3f} {r['volume']:>12}")
@@ -77,15 +77,15 @@ def get_rt_data(code, output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取分时数据")
-    parser.add_argument("code", help="股票代码，如 HK.00700")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get real-time (time-sharing) data")
+    parser.add_argument("code", help="Stock code, e.g. HK.00700")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_rt_data(args.code, args.output_json)

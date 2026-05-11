@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-修改自选股
+Modify Watchlist Securities
 
-功能：添加或删除自选股
-用法：python modify_user_security.py "我的自选" ADD HK.00700 US.AAPL
-      python modify_user_security.py "我的自选" DEL HK.00700
+Function: Add or remove securities from watchlist
+Usage: python modify_user_security.py "My Watchlist" ADD HK.00700 US.AAPL
+      python modify_user_security.py "My Watchlist" DEL HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 60 次
+API Limits:
+- Max 60 requests per 30 seconds
 
-参数说明：
-- op: ADD(添加), DEL(删除)
+Parameters:
+- op: ADD (add), DEL (delete)
 """
 import argparse
 import json
@@ -35,33 +35,33 @@ def modify_user_security(group_name, op, codes, output_json=False):
         }
         op_enum = op_map.get(op.upper())
         if op_enum is None:
-            raise ValueError(f"不支持的操作: {op}，可选: ADD, DEL")
+            raise ValueError(f"Unsupported operation: {op}, available: ADD, DEL")
 
         ctx = create_quote_context()
         ret, data = ctx.modify_user_security(group_name, op_enum, codes)
-        check_ret(ret, data, ctx, "修改自选股")
+        check_ret(ret, data, ctx, "modify watchlist securities")
 
         if output_json:
             print(json.dumps({"result": "ok", "group_name": group_name, "op": op, "codes": codes}, ensure_ascii=False))
         else:
-            action = "添加" if op.upper() == "ADD" else "删除"
-            print(f"成功{action}自选股: {', '.join(codes)} -> 分组 \"{group_name}\"")
+            action = "added" if op.upper() == "ADD" else "removed"
+            print(f"Successfully {action} watchlist securities: {', '.join(codes)} -> group \"{group_name}\"")
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="修改自选股")
-    parser.add_argument("group_name", help="自选股分组名称")
-    parser.add_argument("op", choices=["ADD", "DEL"], help="操作类型")
-    parser.add_argument("codes", nargs="+", help="股票代码列表")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Modify watchlist securities")
+    parser.add_argument("group_name", help="Watchlist group name")
+    parser.add_argument("op", choices=["ADD", "DEL"], help="Operation type")
+    parser.add_argument("codes", nargs="+", help="Stock code list")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     modify_user_security(args.group_name, args.op, args.codes, args.output_json)

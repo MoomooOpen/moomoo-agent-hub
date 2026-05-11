@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-获取板块列表
+Get Plate List
 
-功能：获取指定市场的板块列表（行业/概念/地区），支持关键词过滤
-用法：python get_plate_list.py --market HK --type CONCEPT --keyword 科技
+Function: Retrieve the plate (sector) list for a given market (industry/concept/region), with optional keyword filtering
+Usage: python get_plate_list.py --market HK --type CONCEPT --keyword tech
 
-接口限制：
-- 每 30 秒内最多请求 10 次
+API limits:
+- Max 10 requests per 30 seconds
 
-参数说明：
-- market: 不区分沪和深，输入沪或深都会返回沪深市场的子板块
+Parameter notes:
+- market: No distinction between SH and SZ; entering either returns sub-plates for the entire SH/SZ market
 """
 import argparse
 import json
@@ -50,13 +50,13 @@ def get_plate_list(market="HK", plate_type="ALL", keyword=None, limit=50, output
     try:
         ctx = create_quote_context()
         ret, data = ctx.get_plate_list(market_enum, plate_class)
-        check_ret(ret, data, ctx, "获取板块列表")
+        check_ret(ret, data, ctx, "get plate list")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
 
         records = []
@@ -80,30 +80,30 @@ def get_plate_list(market="HK", plate_type="ALL", keyword=None, limit=50, output
             print(json.dumps({"market": market, "type": plate_type, "data": records}, ensure_ascii=False))
         else:
             print("=" * 50)
-            print(f"板块列表: {market} - {plate_type}" + (f" (关键词: {keyword})" if keyword else ""))
+            print(f"Plate List: {market} - {plate_type}" + (f" (Keyword: {keyword})" if keyword else ""))
             print("=" * 50)
             for r in records:
                 print(f"  {r['code']:<20} {r['name']}")
-            print(f"\n  共 {len(records)} 个板块")
+            print(f"\n  Total {len(records)} plates")
             print("=" * 50)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取板块列表")
-    parser.add_argument("--market", choices=["HK", "US", "SH", "SZ"], default="HK", help="市场（默认: HK）")
+    parser = argparse.ArgumentParser(description="Get plate list")
+    parser.add_argument("--market", choices=["HK", "US", "SH", "SZ"], default="HK", help="Market (default: HK)")
     parser.add_argument("--type", dest="plate_type", choices=["ALL", "INDUSTRY", "REGION", "CONCEPT", "OTHER"],
-                        default="ALL", help="板块类型（默认: ALL）")
-    parser.add_argument("--keyword", "-k", default=None, help="关键词过滤板块名称")
-    parser.add_argument("--limit", type=int, default=50, help="返回数量限制（默认: 50）")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default="ALL", help="Plate type (default: ALL)")
+    parser.add_argument("--keyword", "-k", default=None, help="Keyword to filter plate names")
+    parser.add_argument("--limit", type=int, default=50, help="Limit on number of results (default: 50)")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_plate_list(args.market, args.plate_type, args.keyword, args.limit, args.output_json)

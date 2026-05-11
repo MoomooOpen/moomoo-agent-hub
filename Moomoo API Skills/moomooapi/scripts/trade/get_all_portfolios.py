@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-查询所有账户的资金与持仓
+Query All Account Funds and Positions
 
-功能：遍历所有交易账户，查询每个账户的资金和持仓信息
-用法：python get_all_portfolios.py [--trd-env SIMULATE] [--acc-id 6795352] [--json]
+Function: Iterate through all trading accounts and query funds and position information for each
+Usage: python get_all_portfolios.py [--trd-env SIMULATE] [--acc-id 6795352] [--json]
 
-参数说明：
-- --trd-env: 交易环境过滤，SIMULATE 或 REAL（默认显示全部）
-- --acc-id: 指定账户 ID，只查询该账户
-- --json: JSON 格式输出
+Parameter Description:
+- --trd-env: Trading environment filter, SIMULATE or REAL (displays all by default)
+- --acc-id: Specify an account ID to query only that account
+- --json: JSON format output
 """
 import argparse
 import json
@@ -26,6 +26,7 @@ from common import (
     safe_float,
     safe_int,
     format_enum,
+    _sdk_supports_ai_type,
     RET_OK,
     TrdEnv,
     TrdMarket,
@@ -33,7 +34,7 @@ from common import (
 )
 
 
-# 所有券商枚举
+# All security firm enums
 ALL_FIRMS = [
     SecurityFirm.FUTUSECURITIES,
     SecurityFirm.FUTUINC,
@@ -46,15 +47,20 @@ ALL_FIRMS = [
 
 
 def get_all_accounts(host, port):
-    """获取所有账户列表（去重）"""
+    """Get all account list (deduplicated)"""
     from common import get_opend_config, _check_opend_alive, OpenSecTradeContext
     seen = set()
     accounts = []
     for firm in ALL_FIRMS:
         try:
-            ctx = OpenSecTradeContext(host=host, port=port, filter_trdmarket=TrdMarket.NONE, security_firm=firm)
-            ret, data = ctx.get_acc_list()
-            ctx.close()
+            kwargs = dict(host=host, port=port, filter_trdmarket=TrdMarket.NONE, security_firm=firm)
+            if _sdk_supports_ai_type:
+                kwargs["ai_type"] = 1
+            ctx = OpenSecTradeContext(**kwargs)
+            try:
+                ret, data = ctx.get_acc_list()
+            finally:
+                safe_close(ctx)
             if ret == RET_OK and not is_empty(data):
                 for i in range(len(data)):
                     row = data.iloc[i]
@@ -73,11 +79,14 @@ def get_all_accounts(host, port):
 
 
 def query_portfolio(host, port, acc_id, trd_env):
-    """查询单个账户的资金与持仓"""
+    """Query funds and positions for a single account"""
     from common import OpenSecTradeContext
-    ctx = OpenSecTradeContext(host=host, port=port, filter_trdmarket=TrdMarket.NONE)
+    kwargs = dict(host=host, port=port, filter_trdmarket=TrdMarket.NONE)
+    if _sdk_supports_ai_type:
+        kwargs["ai_type"] = 1
+    ctx = OpenSecTradeContext(**kwargs)
     try:
-        # 资金
+        # Funds
         ret, acc_data = ctx.accinfo_query(trd_env=trd_env, acc_id=acc_id)
         funds = {}
         if ret == RET_OK and not is_empty(acc_data):
@@ -93,7 +102,7 @@ def query_portfolio(host, port, acc_id, trd_env):
                 "power": safe_float(safe_get(row, "power", default=0)),
             }
 
-        # 持仓
+        # Positions
         ret, pos_data = ctx.position_list_query(trd_env=trd_env, acc_id=acc_id)
         positions = []
         if ret == RET_OK and not is_empty(pos_data):
@@ -117,20 +126,20 @@ def query_portfolio(host, port, acc_id, trd_env):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="查询所有账户的资金与持仓")
-    parser.add_argument("--acc-id", type=int, default=None, help="指定账户 ID")
-    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="交易环境过滤")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Query all account funds and positions")
+    parser.add_argument("--acc-id", type=int, default=None, help="Specify account ID")
+    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment filter")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
 
     from common import get_opend_config, _check_opend_alive
     host, port = get_opend_config()
     _check_opend_alive(host, port)
 
-    # 获取账户列表
+    # Get account list
     accounts = get_all_accounts(host, port)
 
-    # 过滤
+    # Filter
     if args.trd_env:
         accounts = [a for a in accounts if a["trd_env"] == args.trd_env]
     if args.acc_id:
@@ -140,7 +149,7 @@ def main():
         if args.output_json:
             print(json.dumps({"accounts": []}, ensure_ascii=False))
         else:
-            print("未找到匹配的账户")
+            print("No matching accounts found")
         return
 
     results = []
@@ -162,22 +171,22 @@ def main():
         print(json.dumps({"accounts": results}, ensure_ascii=False))
     else:
         for r in results:
-            env_label = "模拟" if r["trd_env"] == "SIMULATE" else "实盘"
+            env_label = "Simulated" if r["trd_env"] == "SIMULATE" else "Real"
             markets = r["trdmarket_auth"] if isinstance(r["trdmarket_auth"], list) else [r["trdmarket_auth"]]
             market_str = ",".join(str(m) for m in markets)
             print(f"\n{'='*60}")
-            print(f"账户 {r['acc_id']} | {env_label} | {r['acc_type']} | 市场: {market_str}")
+            print(f"Account {r['acc_id']} | {env_label} | {r['acc_type']} | Market: {market_str}")
             print(f"{'='*60}")
             f = r["funds"]
             if f:
-                print(f"  总资产: {f['total_assets']:,.2f}  现金: {f['cash']:,.2f}  持仓市值: {f['market_val']:,.2f}")
+                print(f"  Total Assets: {f['total_assets']:,.2f}  Cash: {f['cash']:,.2f}  Position Value: {f['market_val']:,.2f}")
             if r["positions"]:
-                print(f"  {'代码':<25} {'名称':<12} {'数量':>8} {'现价':>10} {'市值':>12} {'盈亏%':>8}")
+                print(f"  {'Code':<25} {'Name':<12} {'Qty':>8} {'Price':>10} {'Value':>12} {'P/L%':>8}")
                 print("  " + "-" * 75)
                 for p in r["positions"]:
                     print(f"  {p['code']:<25} {p['name']:<12} {p['qty']:>8.0f} {p['nominal_price']:>10.3f} {p['market_val']:>12.2f} {p['pl_ratio_avg_cost']:>8.2f}%")
             else:
-                print("  无持仓")
+                print("  No positions")
 
 
 if __name__ == "__main__":

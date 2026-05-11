@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
 """
-获取股票市场快照
+Get Market Snapshot
 
-功能：获取指定股票的快照数据（最新价、开高低收、成交量等），无需订阅
-用法：python get_snapshot.py US.AAPL HK.00700
+Function: Get snapshot data for specified stocks (last price, OHLC, volume, etc.), no subscription required
+Usage: python get_snapshot.py US.AAPL HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 60 次
-- 每次请求股票代码上限 400 个
-- 港股 BMP 权限下，单次请求香港证券快照数量上限 20 个
-- 港股期权期货 BMP 权限下，单次请求快照数量上限 20 个
+API Limits:
+- Max 60 requests per 30 seconds
+- Max 400 stock codes per request
+- Under HK stock BMP permission, max 20 HK securities snapshots per request
+- Under HK options/futures BMP permission, max 20 snapshots per request
 
-返回字段说明：
-- update_time: 格式 yyyy-MM-dd HH:mm:ss，港股/A 股北京时间，美股美东时间
-- turnover_rate/amplitude/bid_ask_ratio: 百分比字段，20 实际对应 20%
-- pe_ratio/pb_ratio/pe_ttm_ratio/ey_ratio: 比例字段，默认不展示 %
-- total_market_val/circular_market_val: 单位：元
-- equity_valid: 为 True 时正股相关字段才有合法数值
-- wrt_valid: 为 True 时窝轮相关字段才有合法数值
-- option_valid: 为 True 时期权相关字段才有合法数值
-- lot_size: 指数期权无该字段
-- price_spread: 即卖一价相邻档位的报价差
-- suspension: True 表示停牌
+Return Field Notes:
+- update_time: Format yyyy-MM-dd HH:mm:ss, Beijing time for HK/A-shares, US Eastern time for US stocks
+- turnover_rate/amplitude/bid_ask_ratio: Percentage fields, 20 corresponds to 20%
+- pe_ratio/pb_ratio/pe_ttm_ratio/ey_ratio: Ratio fields, % sign not displayed by default
+- total_market_val/circular_market_val: Unit: currency unit (e.g. HKD/USD/CNY)
+- equity_valid: Underlying stock related fields have valid values only when True
+- wrt_valid: Warrant related fields have valid values only when True
+- option_valid: Option related fields have valid values only when True
+- lot_size: Not available for index options
+- price_spread: The price difference between adjacent price levels from ask price
+- suspension: True indicates trading halt
 """
 import argparse
 import json
@@ -39,63 +39,75 @@ from common import (
 )
 
 
+_SNAPSHOT_BATCH_SIZE = 400  # API limit: max 400 codes per request
+
+
+def _parse_snapshot_row(row):
+    """Parse a single snapshot row into a dict."""
+    return {
+        "code": safe_get(row, "code", default="N/A"),
+        "name": safe_get(row, "name", default=""),
+        "last_price": safe_float(safe_get(row, "last_price", default=0)),
+        "open": safe_float(safe_get(row, "open_price", default=0)),
+        "high": safe_float(safe_get(row, "high_price", default=0)),
+        "low": safe_float(safe_get(row, "low_price", default=0)),
+        "prev_close": safe_float(safe_get(row, "prev_close_price", default=0)),
+        "volume": safe_int(safe_get(row, "volume", default=0)),
+        "turnover": safe_float(safe_get(row, "turnover", default=0)),
+        "bid": safe_float(safe_get(row, "bid_price", default=0)),
+        "ask": safe_float(safe_get(row, "ask_price", default=0)),
+        "price_spread": safe_float(safe_get(row, "price_spread", default=0)),
+    }
+
+
 def get_snapshot(codes, output_json=False):
     ctx = None
     try:
         ctx = create_quote_context()
-        ret, data = ctx.get_market_snapshot(codes)
-        check_ret(ret, data, ctx, "获取市场快照")
 
-        if is_empty(data):
+        # Auto-batch: API limits 400 codes per call
+        records = []
+        for batch_start in range(0, len(codes), _SNAPSHOT_BATCH_SIZE):
+            batch = codes[batch_start:batch_start + _SNAPSHOT_BATCH_SIZE]
+            ret, data = ctx.get_market_snapshot(batch)
+            check_ret(ret, data, ctx, "get market snapshot")
+            if not is_empty(data):
+                for i in range(len(data)):
+                    row = data.iloc[i] if hasattr(data, "iloc") else data[i]
+                    records.append(_parse_snapshot_row(row))
+
+        if not records:
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
-
-        records = []
-        for i in range(len(data)):
-            row = data.iloc[i] if hasattr(data, "iloc") else data[i]
-            records.append({
-                "code": safe_get(row, "code", default="N/A"),
-                "name": safe_get(row, "name", default=""),
-                "last_price": safe_float(safe_get(row, "last_price", default=0)),
-                "open": safe_float(safe_get(row, "open_price", default=0)),
-                "high": safe_float(safe_get(row, "high_price", default=0)),
-                "low": safe_float(safe_get(row, "low_price", default=0)),
-                "prev_close": safe_float(safe_get(row, "prev_close_price", default=0)),
-                "volume": safe_int(safe_get(row, "volume", default=0)),
-                "turnover": safe_float(safe_get(row, "turnover", default=0)),
-                "bid": safe_float(safe_get(row, "bid_price", default=0)),
-                "ask": safe_float(safe_get(row, "ask_price", default=0)),
-                "price_spread": safe_float(safe_get(row, "price_spread", default=0)),
-            })
 
         if output_json:
             print(json.dumps({"data": records}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("市场快照")
+            print("Market Snapshot")
             print("=" * 70)
             for r in records:
                 print(f"\n  {r['code']}  {r['name']}")
-                print(f"    最新: {r['last_price']}  开盘: {r['open']}  最高: {r['high']}  最低: {r['low']}  昨收: {r['prev_close']}")
-                print(f"    成交量: {r['volume']}  成交额: {r['turnover']}  买一: {r['bid']}  卖一: {r['ask']}  价差: {r['price_spread']}")
+                print(f"    Last: {r['last_price']}  Open: {r['open']}  High: {r['high']}  Low: {r['low']}  Prev Close: {r['prev_close']}")
+                print(f"    Volume: {r['volume']}  Turnover: {r['turnover']}  Bid: {r['bid']}  Ask: {r['ask']}  Spread: {r['price_spread']}")
             print("\n" + "=" * 70)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取股票市场快照（无需订阅）")
-    parser.add_argument("codes", nargs="+", help="股票代码，如 US.AAPL HK.00700")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get market snapshot (no subscription required)")
+    parser.add_argument("codes", nargs="+", help="Stock codes, e.g. US.AAPL HK.00700")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_snapshot(args.codes, args.output_json)

@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 """
-获取历史成交列表
+Get History Order Fill List
 
-功能：查询账户的历史成交记录
-用法：python get_history_order_fill_list.py --start 2024-01-01 --end 2024-01-31
+Function: Query the historical deal records of an account
+Usage: python get_history_order_fill_list.py --start 2024-01-01 --end 2024-01-31
 
-接口限制：
-- 每 30 秒内最多请求 10 次
+API Limits:
+- Max 10 requests per 30 seconds
 
-参数说明：
-- start/end: 格式 YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD
+Parameter Description:
+- start/end: Format YYYY-MM-DD HH:MM:SS or YYYY-MM-DD
 
-返回字段说明：
-- deal_id: 成交 ID
-- order_id: 对应订单 ID
-- code: 股票代码
-- trd_side: 交易方向
-- price: 成交价格
-- qty: 成交数量
-- create_time: 成交时间
+Return Field Description:
+- deal_id: Deal ID
+- order_id: Corresponding order ID
+- code: Stock code
+- trd_side: Trade direction
+- price: Deal price
+- qty: Deal quantity
+- create_time: Deal time
 """
 import argparse
 import json
@@ -57,50 +57,56 @@ def get_history_order_fill_list(start=None, end=None, acc_id=None, market=None, 
             kwargs["end"] = end
 
         ret, data = ctx.history_deal_list_query(**kwargs)
-        check_ret(ret, data, ctx, "查询历史成交")
+        check_ret(ret, data, ctx, "Query history deals")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"deals": []}))
             else:
                 print("=" * 70)
-                print(f"历史成交 - 市场: {format_enum(trd_market)}")
+                print(f"History Deals - Market: {format_enum(trd_market)}")
                 print("=" * 70)
-                print("\n  暂无历史成交记录")
+                print("\n  No history deal records")
                 print("=" * 70)
             return
 
+        no_date_filter = not start and not end
         if output_json:
-            print(json.dumps({"market": format_enum(trd_market), "deals": df_to_records(data)}, ensure_ascii=False))
+            result = {"market": format_enum(trd_market), "deals": df_to_records(data)}
+            if no_date_filter:
+                result["note"] = "Default query returns last 90 days only. Specify --start/--end for older records."
+            print(json.dumps(result, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"历史成交 - 市场: {format_enum(trd_market)}")
+            print(f"History Deals - Market: {format_enum(trd_market)}")
+            if no_date_filter:
+                print("Note: Default query returns last 90 days only. Specify --start/--end for older records.")
             print("=" * 70)
             print(data.to_string(index=False))
-            print(f"\n共 {len(data)} 条成交")
+            print(f"\nTotal {len(data)} deals")
             print("=" * 70)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取历史成交列表")
-    parser.add_argument("--start", default=None, help="起始日期 yyyy-MM-dd")
-    parser.add_argument("--end", default=None, help="结束日期 yyyy-MM-dd")
-    parser.add_argument("--acc-id", type=int, default=None, help="账户 ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="交易市场")
-    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="交易环境")
+    parser = argparse.ArgumentParser(description="Get history order fill list")
+    parser.add_argument("--start", default=None, help="Start date yyyy-MM-dd")
+    parser.add_argument("--end", default=None, help="End date yyyy-MM-dd")
+    parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
+    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
-                        default=None, help="券商标识")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default=None, help="Security firm identifier")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_history_order_fill_list(start=args.start, end=args.end, acc_id=args.acc_id, market=args.market,
                                 trd_env=args.trd_env, security_firm=args.security_firm, output_json=args.output_json)

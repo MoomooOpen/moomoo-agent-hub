@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-解析期权简写代码并从期权链中匹配富途期权代码
+Resolve Option Shorthand Code and Match Moomoo Option Code from Option Chain
 
-功能：将用户输入的期权描述解析并通过期权链接口查找对应的富途期权代码
-用法：python resolve_option_code.py --underlying US.JPM --expiry 2026-03-20 --strike 267.50 --type CALL [--json]
+Function: Parse user input option description and look up the corresponding Moomoo option code via option chain API
+Usage: python resolve_option_code.py --underlying US.JPM --expiry 2026-03-20 --strike 267.50 --type CALL [--json]
 
-注意：正股代码必须包含市场前缀（如 US.JPM、HK.00700），由调用方根据上下文确定市场。
+Note: The underlying stock code must include the market prefix (e.g. US.JPM, HK.00700), determined by the caller based on context.
 
-接口限制：
-- 每 30 秒内最多请求 60 次
+API Limits:
+- Max 60 requests per 30 seconds
 """
 import argparse
 import json
@@ -27,42 +27,42 @@ from common import (
 
 def resolve_option_code(underlying, expiry, strike, option_type, output_json=False):
     """
-    通过期权链接口查找匹配的期权合约代码
+    Look up matching option contract code via option chain API
 
     Args:
-        underlying: 正股代码，必须含市场前缀 (如 US.JPM, HK.00700)
-        expiry: 到期日 (如 2026-03-20)
-        strike: 行权价 (如 267.50)
-        option_type: CALL 或 PUT
-        output_json: 是否输出 JSON
+        underlying: Underlying stock code, must include market prefix (e.g. US.JPM, HK.00700)
+        expiry: Expiry date (e.g. 2026-03-20)
+        strike: Strike price (e.g. 267.50)
+        option_type: CALL or PUT
+        output_json: Whether to output JSON
     """
     if '.' not in underlying:
-        msg = f"正股代码 '{underlying}' 缺少市场前缀，请使用完整格式如 US.{underlying.upper()} 或 HK.{underlying}"
+        msg = f"Underlying code '{underlying}' is missing market prefix, please use full format like US.{underlying.upper()} or HK.{underlying}"
         if output_json:
             print(json.dumps({"error": msg}, ensure_ascii=False))
         else:
-            print(f"错误: {msg}")
+            print(f"Error: {msg}")
         sys.exit(1)
 
     ctx = None
     try:
         ctx = create_quote_context()
 
-        # 使用到期日作为期权链的时间筛选范围
+        # Use expiry date as the time filter range for option chain
         ret, data = ctx.get_option_chain(underlying, start=expiry, end=expiry)
-        check_ret(ret, data, ctx, "获取期权链")
+        check_ret(ret, data, ctx, "get option chain")
 
         if is_empty(data):
-            msg = f"未找到 {underlying} 在 {expiry} 的期权链数据"
+            msg = f"No option chain data found for {underlying} on {expiry}"
             if output_json:
                 print(json.dumps({"error": msg, "underlying": underlying,
                                   "expiry": expiry, "strike": strike,
                                   "option_type": option_type}, ensure_ascii=False))
             else:
-                print(f"错误: {msg}")
+                print(f"Error: {msg}")
             sys.exit(1)
 
-        # 在期权链中匹配：行权价 + 期权类型(CALL/PUT)
+        # Match in option chain: strike price + option type (CALL/PUT)
         matched = []
         for i in range(len(data)):
             row = data.iloc[i] if hasattr(data, "iloc") else data[i]
@@ -74,14 +74,14 @@ def resolve_option_code(underlying, expiry, strike, option_type, output_json=Fal
             row_strike_time = str(row.get("strike_time", ""))
             row_last_price = safe_float(row.get("last_price", 0))
 
-            # 匹配期权类型
+            # Match option type
             type_match = False
             if option_type == "CALL" and row_type in ("CALL", "涨", "认购"):
                 type_match = True
             elif option_type == "PUT" and row_type in ("PUT", "跌", "认沽"):
                 type_match = True
 
-            # 匹配行权价（浮点数比较，容差 0.001）
+            # Match strike price (float comparison, tolerance 0.001)
             strike_match = abs(row_strike - strike) < 0.001
 
             if type_match and strike_match:
@@ -95,8 +95,8 @@ def resolve_option_code(underlying, expiry, strike, option_type, output_json=Fal
                 })
 
         if not matched:
-            msg = (f"在 {underlying} 的期权链中未找到匹配的合约\n"
-                   f"  到期日: {expiry}, 行权价: {strike}, 类型: {option_type}")
+            msg = (f"No matching contract found in {underlying} option chain\n"
+                   f"  Expiry: {expiry}, Strike: {strike}, Type: {option_type}")
             if output_json:
                 print(json.dumps({
                     "error": msg,
@@ -107,8 +107,8 @@ def resolve_option_code(underlying, expiry, strike, option_type, output_json=Fal
                     "available_count": len(data),
                 }, ensure_ascii=False))
             else:
-                print(f"错误: {msg}")
-                # 打印最接近的几个合约帮助用户确认
+                print(f"Error: {msg}")
+                # Print the closest contracts to help user verify
                 _print_nearby(data, strike, option_type)
             sys.exit(1)
 
@@ -122,17 +122,17 @@ def resolve_option_code(underlying, expiry, strike, option_type, output_json=Fal
             }, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"期权代码解析结果")
+            print(f"Option Code Resolution Result")
             print("=" * 70)
-            print(f"  正股:     {underlying}")
-            print(f"  到期日:   {expiry}")
-            print(f"  行权价:   {strike}")
-            print(f"  类型:     {option_type}")
+            print(f"  Underlying:  {underlying}")
+            print(f"  Expiry:      {expiry}")
+            print(f"  Strike:      {strike}")
+            print(f"  Type:        {option_type}")
             print("-" * 70)
             for m in matched:
-                print(f"  期权代码: {m['code']}")
-                print(f"  名称:     {m['name']}")
-                print(f"  最新价:   {m['last_price']}")
+                print(f"  Option Code: {m['code']}")
+                print(f"  Name:        {m['name']}")
+                print(f"  Last Price:  {m['last_price']}")
                 print()
             print("=" * 70)
 
@@ -144,14 +144,14 @@ def resolve_option_code(underlying, expiry, strike, option_type, output_json=Fal
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 def _print_nearby(data, strike, option_type, count=5):
-    """匹配失败时，打印行权价最接近的几个合约帮助用户确认"""
+    """When matching fails, print contracts with closest strike prices to help user verify"""
     candidates = []
     for i in range(len(data)):
         row = data.iloc[i] if hasattr(data, "iloc") else data[i]
@@ -171,27 +171,27 @@ def _print_nearby(data, strike, option_type, count=5):
 
     if candidates:
         candidates.sort(key=lambda x: x["diff"])
-        print(f"\n最接近的 {option_type} 合约:")
+        print(f"\nClosest {option_type} contracts:")
         for c in candidates[:count]:
-            print(f"  {c['code']}  行权价: {c['strike_price']}")
+            print(f"  {c['code']}  Strike: {c['strike_price']}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="通过期权链查找富途期权代码",
-        epilog="示例: python resolve_option_code.py --underlying US.JPM --expiry 2026-03-20 --strike 267.50 --type CALL",
+        description="Look up Moomoo option code via option chain",
+        epilog="Example: python resolve_option_code.py --underlying US.JPM --expiry 2026-03-20 --strike 267.50 --type CALL",
     )
     parser.add_argument("--underlying", required=True,
-                        help="正股代码，必须含市场前缀（如 US.JPM、HK.00700）")
+                        help="Underlying stock code, must include market prefix (e.g. US.JPM, HK.00700)")
     parser.add_argument("--expiry", required=True,
-                        help="到期日 yyyy-MM-dd")
+                        help="Expiry date yyyy-MM-dd")
     parser.add_argument("--strike", type=float, required=True,
-                        help="行权价")
+                        help="Strike price")
     parser.add_argument("--type", dest="option_type", required=True,
                         choices=["CALL", "PUT"],
-                        help="期权类型")
+                        help="Option type")
     parser.add_argument("--json", action="store_true", dest="output_json",
-                        help="输出 JSON 格式")
+                        help="Output in JSON format")
 
     args = parser.parse_args()
     resolve_option_code(args.underlying, args.expiry, args.strike, args.option_type, args.output_json)

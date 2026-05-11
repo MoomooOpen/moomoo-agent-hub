@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-取消所有订阅
+Unsubscribe all
 
-功能：取消当前连接的全部订阅
-用法：python unsubscribe_all.py
+Function: Cancel all subscriptions for the current connection
+Usage: python unsubscribe_all.py
 
-接口限制：
-- 订阅后至少 1 分钟才能反订阅
-- 反订阅后需所有连接都反订阅同一标的，额度才会释放
+API limitations:
+- Must subscribe for at least 1 minute before unsubscribing
+- Quota is only released after all connections have unsubscribed from the same security
 """
 import argparse
 import json
@@ -27,25 +27,25 @@ def unsubscribe_all(output_json=False):
     try:
         ctx = create_quote_context()
         ret, data = ctx.unsubscribe_all()
-        check_ret(ret, data, ctx, "取消所有订阅")
+        check_ret(ret, data, ctx, "Unsubscribe all")
 
         if output_json:
             print(json.dumps({"result": "ok"}, ensure_ascii=False))
         else:
-            print("已取消所有订阅")
+            print("All subscriptions cancelled")
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="取消所有订阅")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Unsubscribe all")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     unsubscribe_all(args.output_json)

@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-获取融资融券数据
+Get Margin Ratio Data
 
-功能：查询指定股票的融资融券比率
-用法：python get_margin_ratio.py HK.00700
+Function: Query the margin ratio for specified stocks
+Usage: python get_margin_ratio.py HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 10 次
+API Limits:
+- Max 10 requests per 30 seconds
 
-返回字段说明：
-- im_long_ratio: 初始保证金比率（多头）
-- im_short_ratio: 初始保证金比率（空头）
-- mm_long_ratio: 维持保证金比率（多头）
-- mm_short_ratio: 维持保证金比率（空头）
-- is_long_permit: 是否允许做多
-- is_short_permit: 是否允许做空
+Return Field Description:
+- im_long_ratio: Initial margin ratio (long)
+- im_short_ratio: Initial margin ratio (short)
+- mm_long_ratio: Maintenance margin ratio (long)
+- mm_short_ratio: Maintenance margin ratio (short)
+- is_long_permit: Whether long positions are allowed
+- is_short_permit: Whether short positions are allowed
 """
 import argparse
 import json
@@ -41,21 +41,21 @@ def get_margin_ratio(codes, acc_id=None, market=None, trd_env=None, security_fir
     ctx = None
     try:
         ctx = create_trade_context(market, security_firm=parse_security_firm(security_firm))
-        ret, data = ctx.get_margin_ratio(codes, trd_env=trd_env, acc_id=acc_id)
-        check_ret(ret, data, ctx, "获取融资融券数据")
+        ret, data = ctx.get_margin_ratio(codes)
+        check_ret(ret, data, ctx, "Get margin ratio data")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无融资融券数据")
+                print("No margin ratio data")
             return
 
         if output_json:
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("融资融券数据")
+            print("Margin Ratio Data")
             print("=" * 70)
             print(data.to_string(index=False))
             print("=" * 70)
@@ -64,22 +64,22 @@ def get_margin_ratio(codes, acc_id=None, market=None, trd_env=None, security_fir
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取融资融券数据")
-    parser.add_argument("codes", nargs="+", help="股票代码，如 HK.00700")
-    parser.add_argument("--acc-id", type=int, default=None, help="账户 ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="交易市场")
-    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="交易环境")
+    parser = argparse.ArgumentParser(description="Get margin ratio data")
+    parser.add_argument("codes", nargs="+", help="Stock codes, e.g. HK.00700")
+    parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
+    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
-                        default=None, help="券商标识")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default=None, help="Security firm identifier")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_margin_ratio(args.codes, acc_id=args.acc_id, market=args.market,
                      trd_env=args.trd_env, security_firm=args.security_firm, output_json=args.output_json)

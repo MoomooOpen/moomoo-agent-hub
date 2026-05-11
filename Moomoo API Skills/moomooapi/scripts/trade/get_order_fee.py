@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-获取订单费用
+Get Order Fee
 
-功能：查询指定订单的费用明细
-用法：python get_order_fee.py 12345678 87654321
+Function: Query the fee details of specified orders
+Usage: python get_order_fee.py 12345678 87654321
 
-接口限制：
-- 每 30 秒内最多请求 10 次
-- 每次最多查询 20 个订单
+API Limits:
+- Max 10 requests per 30 seconds
+- Max 20 orders per query
 
-返回字段说明：
-- order_id: 订单 ID
-- total_fee: 总费用
-- fee_list: 费用明细列表
+Return Field Description:
+- order_id: Order ID
+- total_fee: Total fee
+- fee_list: Fee detail list
 """
 import argparse
 import json
@@ -39,25 +39,25 @@ def get_order_fee(order_ids, acc_id=None, market=None, trd_env=None, security_fi
     ctx = None
     try:
         ctx = create_trade_context(market, security_firm=parse_security_firm(security_firm))
-        ret, data = ctx.get_order_fee(
+        ret, data = ctx.order_fee_query(
             order_id_list=order_ids,
             trd_env=trd_env,
             acc_id=acc_id,
         )
-        check_ret(ret, data, ctx, "获取订单费用")
+        check_ret(ret, data, ctx, "Get order fee")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无订单费用数据")
+                print("No order fee data")
             return
 
         if output_json:
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("订单费用明细")
+            print("Order Fee Details")
             print("=" * 70)
             print(data.to_string(index=False))
             print("=" * 70)
@@ -66,22 +66,22 @@ def get_order_fee(order_ids, acc_id=None, market=None, trd_env=None, security_fi
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取订单费用")
-    parser.add_argument("order_ids", nargs="+", help="订单 ID 列表")
-    parser.add_argument("--acc-id", type=int, default=None, help="账户 ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="交易市场")
-    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="交易环境")
+    parser = argparse.ArgumentParser(description="Get order fee")
+    parser.add_argument("order_ids", nargs="+", help="Order ID list")
+    parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
+    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
-                        default=None, help="券商标识")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default=None, help="Security firm identifier")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_order_fee(args.order_ids, acc_id=args.acc_id, market=args.market,
                   trd_env=args.trd_env, security_firm=args.security_firm, output_json=args.output_json)

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-获取资金分布
+Get Capital Distribution
 
-功能：获取指定股票的资金分布（特大单/大单/中单/小单的流入流出）
-用法：python get_capital_distribution.py HK.00700
+Function: Get the capital distribution for a stock (super large/large/medium/small order inflow and outflow)
+Usage: python get_capital_distribution.py HK.00700
 
-接口限制：
-- 每 30 秒内最多请求 30 次
-- 仅支持正股、窝轮和基金
+API Limits:
+- Max 30 requests per 30 seconds
+- Only supports equities, warrants, and funds
 
-返回字段说明：
-- update_time: 格式 yyyy-MM-dd HH:mm:ss
+Return Field Description:
+- update_time: Format yyyy-MM-dd HH:mm:ss
 """
 import argparse
 import json
@@ -32,13 +32,13 @@ def get_capital_distribution(code, output_json=False):
     try:
         ctx = create_quote_context()
         ret, data = ctx.get_capital_distribution(code)
-        check_ret(ret, data, ctx, "获取资金分布")
+        check_ret(ret, data, ctx, "Get capital distribution")
 
         if is_empty(data):
             if output_json:
                 print(json.dumps({"code": code, "data": {}}))
             else:
-                print("无数据")
+                print("No data")
             return
 
         row = data.iloc[0] if hasattr(data, "iloc") else data
@@ -58,15 +58,15 @@ def get_capital_distribution(code, output_json=False):
             print(json.dumps(result, ensure_ascii=False))
         else:
             print("=" * 60)
-            print(f"资金分布: {code}")
+            print(f"Capital Distribution: {code}")
             print("=" * 60)
-            print(f"  {'类型':<10} {'流入':>15} {'流出':>15} {'净流入':>15}")
+            print(f"  {'Type':<10} {'Inflow':>15} {'Outflow':>15} {'Net Inflow':>15}")
             print("  " + "-" * 56)
             for label, in_key, out_key in [
-                ("特大单", "capital_in_super", "capital_out_super"),
-                ("大单", "capital_in_big", "capital_out_big"),
-                ("中单", "capital_in_mid", "capital_out_mid"),
-                ("小单", "capital_in_small", "capital_out_small"),
+                ("Super Large", "capital_in_super", "capital_out_super"),
+                ("Large", "capital_in_big", "capital_out_big"),
+                ("Medium", "capital_in_mid", "capital_out_mid"),
+                ("Small", "capital_in_small", "capital_out_small"),
             ]:
                 in_val = result[in_key]
                 out_val = result[out_key]
@@ -78,15 +78,15 @@ def get_capital_distribution(code, output_json=False):
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="获取资金分布")
-    parser.add_argument("code", help="股票代码，如 HK.00700")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+    parser = argparse.ArgumentParser(description="Get capital distribution")
+    parser.add_argument("code", help="Stock code, e.g. HK.00700")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_capital_distribution(args.code, args.output_json)

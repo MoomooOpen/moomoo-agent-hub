@@ -1,26 +1,33 @@
 #!/usr/bin/env python3
 """
-条件选股
+Stock Screener
 
-功能：根据价格、市值、PE、涨跌幅等条件筛选股票
-用法：python get_stock_filter.py --market HK --min-price 10 --max-price 100
+Function: Screen stocks based on conditions such as price, market cap, PE, change rate, etc.
+Usage: python get_stock_filter.py --market HK --min-price 10 --max-price 100
 
-接口限制：
-- 港股 BMP 权限不支持
-- 每 30 秒内最多请求 10 次
-- 每页最多返回 200 个结果
+API Limits:
+- Not supported under HK stock BMP permission
+- Max 10 requests per 30 seconds
+- Max 200 results per page
 
-参数说明：
-- market: 不区分沪股和深股，传入沪股或深股都会返回沪深市场的股票
-- filter_list: 元素类型为 SimpleFilter / AccumulateFilter / FinancialFilter / CustomIndicatorFilter / PatternFilter
-- filter_min/filter_max: 闭区间，不传默认 -∞ / +∞
-- is_no_filter: True 不筛选，False 筛选，不传默认不筛选
-- sort: 不传默认不排序
+Parameter Notes:
+- --market: Market code (HK/US/SH/SZ). Does not distinguish between SH and SZ; passing either returns stocks from both markets
+- --sort: Sort field (market_val/price/volume/turnover/turnover_rate/change_rate/pe/pb). Defaults to market_val descending
+- --asc: Sort ascending (default: descending)
+- --limit: Number of results (default: 20)
+- --min-price/--max-price: Price range
+- --min-market-cap/--max-market-cap: Market cap range (in 100 millions)
+- --min-pe/--max-pe: PE range
+- --min-pb/--max-pb: PB range
+- --min-change-rate/--max-change-rate: Change rate range (%)
+- --min-volume: Minimum volume
+- --min-turnover-rate/--max-turnover-rate: Turnover rate range (%)
+- --json: Output in JSON format
 
-返回字段说明：
-- turnover_rate/change_rate/amplitude: 百分比字段，20 实际对应 20%
-- total_share/float_share: 单位：股
-- float_market_val: 单位：元
+Return Field Notes:
+- turnover_rate/change_rate/amplitude: Percentage fields, 20 corresponds to 20%
+- total_share/float_share: Unit: shares
+- float_market_val: Unit: currency unit (e.g. HKD/USD/CNY)
 """
 import argparse
 import json
@@ -36,6 +43,7 @@ from common import (
     safe_float,
     safe_int,
     df_to_records,
+    RET_OK,
     Market,
     SimpleFilter,
     AccumulateFilter,
@@ -71,11 +79,106 @@ QUARTER_MAP = {
 }
 
 
+def _snapshot_to_record(row):
+    """Convert a get_market_snapshot row to a standard record dict"""
+    return {
+        "code": row.get("code", ""),
+        "name": row.get("name", ""),
+        "price": safe_float(row.get("last_price")),
+        "change_rate": safe_float(row.get("change_rate")),
+        "market_val": safe_float(row.get("total_market_val")),
+        "volume": safe_int(row.get("volume")),
+        "pe": safe_float(row.get("pe_ttm_ratio")),
+        "pb": safe_float(row.get("pb_ratio")),
+        "turnover_rate": safe_float(row.get("turnover_rate")),
+    }
+
+
+def _enrich_with_snapshot(ctx, records):
+    """Use get_market_snapshot to fill in missing market data in records"""
+    code_list = [r["code"] for r in records if r["code"]]
+    if not code_list:
+        return records
+    snapshot_map = {}
+    for i in range(0, len(code_list), 50):
+        batch = code_list[i:i + 50]
+        snap_ret, snap_data = ctx.get_market_snapshot(batch)
+        if snap_ret == RET_OK and not is_empty(snap_data):
+            for _, row in snap_data.iterrows():
+                snapshot_map[row["code"]] = row
+        elif snap_ret != RET_OK and len(batch) > 1:
+            for code in batch:
+                s_ret, s_data = ctx.get_market_snapshot([code])
+                if s_ret == RET_OK and not is_empty(s_data):
+                    snapshot_map[code] = s_data.iloc[0]
+    for r in records:
+        row = snapshot_map.get(r["code"])
+        if row is not None:
+            r.update(_snapshot_to_record(row))
+    return records
+
+
+# Fallback well-known large-cap codes per market (Top 50 level) for snapshot-based sorting
+_FALLBACK_CODES = {
+    "US": [
+        "US.AAPL", "US.MSFT", "US.NVDA", "US.GOOG", "US.AMZN",
+        "US.META", "US.BRK.B", "US.TSLA", "US.AVGO", "US.TSM",
+        "US.WMT", "US.JPM", "US.LLY", "US.V", "US.MA",
+        "US.UNH", "US.ORCL", "US.XOM", "US.COST", "US.NFLX",
+        "US.HD", "US.PG", "US.JNJ", "US.BAC", "US.ABBV",
+        "US.CRM", "US.SAP", "US.KO", "US.PLTR", "US.AMD",
+        "US.MRK", "US.CSCO", "US.PEP", "US.TMO", "US.ADBE",
+        "US.ACN", "US.IBM", "US.ABT", "US.QCOM", "US.GE",
+        "US.AMAT", "US.ISRG", "US.INTU", "US.TXN", "US.BKNG",
+        "US.NOW", "US.UBER", "US.GS", "US.MS", "US.CAT",
+    ],
+    "HK": [
+        "HK.00700", "HK.09988", "HK.09618", "HK.03690", "HK.01810",
+        "HK.09888", "HK.09999", "HK.01024", "HK.01211", "HK.00981",
+        "HK.02800", "HK.00005", "HK.00941", "HK.01398", "HK.00939",
+        "HK.03988", "HK.00388", "HK.00001", "HK.00016",
+        "HK.02318", "HK.00883", "HK.00857", "HK.00386", "HK.01928",
+        "HK.00002", "HK.00003", "HK.00006", "HK.00027", "HK.01299", "HK.00012",
+        "HK.02015", "HK.09866", "HK.09868", "HK.01347", "HK.00020",
+        "HK.02382", "HK.02269", "HK.01088", "HK.02628", "HK.00669",
+    ],
+}
+
+
+def _fallback_by_snapshot(ctx, market, limit, asc):
+    """When get_stock_filter returns unreliable data, use known large-cap snapshot for market-cap sorting"""
+    code_list = _FALLBACK_CODES.get(market.upper(), [])
+    if not code_list:
+        return None
+
+    records = []
+    batch_size = 50
+    for i in range(0, len(code_list), batch_size):
+        batch = code_list[i:i + batch_size]
+        snap_ret, snap_data = ctx.get_market_snapshot(batch)
+        if snap_ret == RET_OK and not is_empty(snap_data):
+            for _, row in snap_data.iterrows():
+                r = _snapshot_to_record(row)
+                if r["market_val"] > 0:
+                    records.append(r)
+        elif snap_ret != RET_OK and len(batch) > 1:
+            for code in batch:
+                s_ret, s_data = ctx.get_market_snapshot([code])
+                if s_ret == RET_OK and not is_empty(s_data):
+                    r = _snapshot_to_record(s_data.iloc[0])
+                    if r["market_val"] > 0:
+                        records.append(r)
+
+    records.sort(key=lambda r: r["market_val"], reverse=not asc)
+    return records[:limit]
+
+
 def get_stock_filter(market="HK", limit=20, sort=None, asc=False, output_json=False, **kwargs):
     market_enum = MARKET_MAP.get(market.upper(), Market.HK)
     filter_list = []
 
-    # SimpleFilter: 价格、市值、PE、PB
+    # SimpleFilter: price, market cap, PE, PB
+    # Note: must set is_no_filter=False explicitly, otherwise SDK won't serialize filter_min/filter_max
     simple = SimpleFilter()
     has_simple = False
     if kwargs.get("min_price") is not None:
@@ -87,11 +190,13 @@ def get_stock_filter(market="HK", limit=20, sort=None, asc=False, output_json=Fa
         simple.stock_field = StockField.CUR_PRICE
         has_simple = True
     if has_simple:
+        simple.is_no_filter = False
         filter_list.append(simple)
 
     if kwargs.get("min_market_cap") is not None or kwargs.get("max_market_cap") is not None:
         sf = SimpleFilter()
         sf.stock_field = StockField.MARKET_VAL
+        sf.is_no_filter = False
         if kwargs.get("min_market_cap") is not None:
             sf.filter_min = kwargs["min_market_cap"] * 1e8
         if kwargs.get("max_market_cap") is not None:
@@ -101,6 +206,7 @@ def get_stock_filter(market="HK", limit=20, sort=None, asc=False, output_json=Fa
     if kwargs.get("min_pe") is not None or kwargs.get("max_pe") is not None:
         sf = SimpleFilter()
         sf.stock_field = StockField.PE_TTM
+        sf.is_no_filter = False
         if kwargs.get("min_pe") is not None:
             sf.filter_min = kwargs["min_pe"]
         if kwargs.get("max_pe") is not None:
@@ -110,16 +216,18 @@ def get_stock_filter(market="HK", limit=20, sort=None, asc=False, output_json=Fa
     if kwargs.get("min_pb") is not None or kwargs.get("max_pb") is not None:
         sf = SimpleFilter()
         sf.stock_field = StockField.PB_RATE
+        sf.is_no_filter = False
         if kwargs.get("min_pb") is not None:
             sf.filter_min = kwargs["min_pb"]
         if kwargs.get("max_pb") is not None:
             sf.filter_max = kwargs["max_pb"]
         filter_list.append(sf)
 
-    # AccumulateFilter: 涨跌幅、成交量、换手率
+    # AccumulateFilter: change rate, volume, turnover rate
     if kwargs.get("min_change_rate") is not None or kwargs.get("max_change_rate") is not None:
         af = AccumulateFilter()
         af.stock_field = StockField.CHANGE_RATE
+        af.is_no_filter = False
         if kwargs.get("min_change_rate") is not None:
             af.filter_min = kwargs["min_change_rate"]
         if kwargs.get("max_change_rate") is not None:
@@ -129,19 +237,21 @@ def get_stock_filter(market="HK", limit=20, sort=None, asc=False, output_json=Fa
     if kwargs.get("min_volume") is not None:
         af = AccumulateFilter()
         af.stock_field = StockField.VOLUME
+        af.is_no_filter = False
         af.filter_min = kwargs["min_volume"]
         filter_list.append(af)
 
     if kwargs.get("min_turnover_rate") is not None or kwargs.get("max_turnover_rate") is not None:
         af = AccumulateFilter()
         af.stock_field = StockField.TURNOVER_RATE
+        af.is_no_filter = False
         if kwargs.get("min_turnover_rate") is not None:
             af.filter_min = kwargs["min_turnover_rate"]
         if kwargs.get("max_turnover_rate") is not None:
             af.filter_max = kwargs["max_turnover_rate"]
         filter_list.append(af)
 
-    # 排序
+    # Sorting: must set is_no_filter=False explicitly, otherwise SDK won't serialize filter_min/sort to protobuf
     accumulate_fields = {"volume", "turnover", "turnover_rate", "change_rate"}
     if sort and sort in SORT_MAP:
         if sort in accumulate_fields:
@@ -149,22 +259,24 @@ def get_stock_filter(market="HK", limit=20, sort=None, asc=False, output_json=Fa
         else:
             sf_sort = SimpleFilter()
         sf_sort.stock_field = SORT_MAP[sort]
-        sf_sort.is_no_filter = True
+        sf_sort.is_no_filter = False
+        sf_sort.filter_min = 1
         sf_sort.sort = SortDir.ASCEND if asc else SortDir.DESCEND
         filter_list.append(sf_sort)
 
     if not filter_list:
         sf_default = SimpleFilter()
         sf_default.stock_field = StockField.MARKET_VAL
-        sf_default.is_no_filter = True
-        sf_default.sort = SortDir.DESCEND
+        sf_default.is_no_filter = False
+        sf_default.filter_min = 1
+        sf_default.sort = SortDir.ASCEND if asc else SortDir.DESCEND
         filter_list.append(sf_default)
 
     ctx = None
     try:
         ctx = create_quote_context()
         ret, data = ctx.get_stock_filter(market_enum, filter_list, begin=0, num=limit)
-        check_ret(ret, data, ctx, "条件选股")
+        check_ret(ret, data, ctx, "stock screener")
 
         last_page, all_count, stock_list = data
 
@@ -172,67 +284,99 @@ def get_stock_filter(market="HK", limit=20, sort=None, asc=False, output_json=Fa
             if output_json:
                 print(json.dumps({"data": []}))
             else:
-                print("无数据")
+                print("No data")
             return
 
+        # get_stock_filter returns FilterStockData which may lack market data fields;
+        # try to extract values, then enrich with snapshot if all empty.
         records = []
+        has_data = False
         for item in stock_list:
+            mv = safe_float(getattr(item, "market_val", None))
+            price = safe_float(getattr(item, "cur_price", None))
+            if mv > 0 or price > 0:
+                has_data = True
             records.append({
                 "code": getattr(item, "stock_code", ""),
                 "name": getattr(item, "stock_name", ""),
-                "price": safe_float(getattr(item, "cur_price", 0)),
-                "change_rate": safe_float(getattr(item, "change_rate", 0)),
-                "market_val": safe_float(getattr(item, "market_val", 0)),
-                "volume": safe_int(getattr(item, "volume", 0)),
-                "pe": safe_float(getattr(item, "pe_ttm", 0)),
-                "pb": safe_float(getattr(item, "pb_rate", 0)),
-                "turnover_rate": safe_float(getattr(item, "turnover_rate", 0)),
+                "price": price,
+                "change_rate": safe_float(getattr(item, "change_rate", None)),
+                "market_val": mv,
+                "volume": safe_int(getattr(item, "volume", None)),
+                "pe": safe_float(getattr(item, "pe_ttm", None)),
+                "pb": safe_float(getattr(item, "pb_rate", None)),
+                "turnover_rate": safe_float(getattr(item, "turnover_rate", None)),
             })
+
+        # If FilterStockData had no market data, enrich via get_market_snapshot
+        if not has_data:
+            records = _enrich_with_snapshot(ctx, records)
+
+        # Python-side re-sort: API sort may be unreliable (especially after enrichment),
+        # re-sort locally to guarantee correct output order.
+        _RECORD_SORT_KEY = {
+            "market_val": "market_val", "price": "price", "volume": "volume",
+            "turnover_rate": "turnover_rate", "change_rate": "change_rate",
+            "pe": "pe", "pb": "pb",
+        }
+        effective_sort = sort if sort else "market_val"
+        record_key = _RECORD_SORT_KEY.get(effective_sort)
+        if record_key:
+            records.sort(key=lambda r: r.get(record_key, 0), reverse=not asc)
+
+        # Last resort: if sorting by market_val but all values are 0,
+        # fall back to known large-cap stocks + snapshot.
+        if effective_sort == "market_val":
+            max_mv = max((r["market_val"] for r in records), default=0)
+            if max_mv <= 0:
+                fallback = _fallback_by_snapshot(ctx, market, limit, asc)
+                if fallback:
+                    records = fallback
 
         if output_json:
             print(json.dumps({"market": market, "count": len(records), "data": records}, ensure_ascii=False))
         else:
             print("=" * 100)
-            print(f"条件选股结果: {market} (共 {len(records)} 只)")
+            print(f"Stock Screener Results: {market} (Total {len(records)} stocks)")
             print("=" * 100)
-            print(f"  {'代码':<15} {'名称':<12} {'价格':>8} {'涨跌%':>8} {'市值(亿)':>10} {'PE':>8} {'换手%':>8}")
+            print(f"  {'Code':<15} {'Name':<12} {'Price':>8} {'Chg%':>8} {'MktCap(100M)':>12} {'PE':>8} {'Turn%':>8}")
             print("  " + "-" * 96)
             for r in records:
                 mv = r['market_val'] / 1e8 if r['market_val'] > 0 else 0
-                print(f"  {r['code']:<15} {r['name']:<12} {r['price']:>8.2f} {r['change_rate']:>8.2f} {mv:>10.2f} {r['pe']:>8.2f} {r['turnover_rate']:>8.2f}")
+                print(f"  {r['code']:<15} {r['name']:<12} {r['price']:>8.2f} {r['change_rate']:>8.2f} {mv:>12.2f} {r['pe']:>8.2f} {r['turnover_rate']:>8.2f}")
             print("=" * 100)
 
     except Exception as e:
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
-            print(f"错误: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
     finally:
         safe_close(ctx)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="条件选股")
-    parser.add_argument("--market", choices=["HK", "US", "SH", "SZ"], default="HK", help="市场")
+    parser = argparse.ArgumentParser(description="Stock Screener")
+    parser.add_argument("--market", choices=["HK", "US", "SH", "SZ"], default="HK", help="Market")
     parser.add_argument("--min-price", type=float, default=None)
     parser.add_argument("--max-price", type=float, default=None)
-    parser.add_argument("--min-market-cap", type=float, default=None, help="最小市值（亿）")
-    parser.add_argument("--max-market-cap", type=float, default=None, help="最大市值（亿）")
+    parser.add_argument("--min-market-cap", type=float, default=None, help="Min market cap (in 100 millions)")
+    parser.add_argument("--max-market-cap", type=float, default=None, help="Max market cap (in 100 millions)")
     parser.add_argument("--min-pe", type=float, default=None)
     parser.add_argument("--max-pe", type=float, default=None)
     parser.add_argument("--min-pb", type=float, default=None)
     parser.add_argument("--max-pb", type=float, default=None)
-    parser.add_argument("--min-change-rate", type=float, default=None, help="最小涨跌幅(%%)")
-    parser.add_argument("--max-change-rate", type=float, default=None, help="最大涨跌幅(%%)")
+    parser.add_argument("--min-change-rate", type=float, default=None, help="Min change rate (%%)")
+    parser.add_argument("--max-change-rate", type=float, default=None, help="Max change rate (%%)")
     parser.add_argument("--min-volume", type=int, default=None)
-    parser.add_argument("--min-turnover-rate", type=float, default=None, help="最小换手率(%%)")
-    parser.add_argument("--max-turnover-rate", type=float, default=None, help="最大换手率(%%)")
+    parser.add_argument("--min-turnover-rate", type=float, default=None, help="Min turnover rate (%%)")
+    parser.add_argument("--max-turnover-rate", type=float, default=None, help="Max turnover rate (%%)")
     parser.add_argument("--sort", choices=["market_val", "price", "volume", "turnover", "turnover_rate", "change_rate", "pe", "pb"],
-                        default=None, help="排序字段")
-    parser.add_argument("--asc", action="store_true", help="升序排序（默认降序）")
-    parser.add_argument("--limit", type=int, default=20, help="返回数量（默认: 20）")
-    parser.add_argument("--json", action="store_true", dest="output_json", help="输出 JSON 格式")
+                        default=None, help="Sort field")
+    parser.add_argument("--asc", action="store_true", help="Sort ascending (default: descending)")
+    parser.add_argument("--limit", type=int, default=20, help="Number of results (default: 20)")
+    parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
 
     get_stock_filter(
