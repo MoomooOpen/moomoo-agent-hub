@@ -1,12 +1,20 @@
 ---
 name: moomoo-stock-digest
 description: >-
-  Interprets the latest public news for one user-specified stock or company by
+  INTERPRETS / SUMMARIZES the latest public news for ONE user-specified stock or company by
   calling the moomoo news search API directly, extracting key events, judging likely impact
-  direction, and returning a structured stock digest with evidence links and a
-  non-investment disclaimer. Use when the user asks for a stock digest,
-  single-stock news interpretation, stock news interpretation, or moomoo stock
-  digest.
+  direction (bullish / bearish / neutral), and returning a structured single-stock digest with
+  evidence links and a non-investment disclaimer. This skill is interpretation-only — it
+  produces a summary / digest / directional read, not a raw news list. TRIGGER only when the
+  user's request explicitly asks for interpretation, summary, digest, analysis, or directional
+  reading — keywords include "digest", "interpret", "interpretation", "summarize", "summary",
+  "analyze", "what does this mean", "what's going on with", "解读", "点评", "分析", "总结",
+  "摘要", "概要", "动态", "看一下…最近发生了什么", "stock digest", "news interpretation".
+  DO NOT TRIGGER on a bare single-stock mention without any interpret/summary keyword (e.g.
+  "Tesla", "看看 NVDA"). DO NOT TRIGGER when the user only wants to LIST / RETRIEVE news,
+  articles, announcements, or research reports without interpretation — that is the job of
+  moomoo-news-search. DO NOT TRIGGER on community sentiment / bullish-vs-bearish mood
+  questions — that is moomoo-comment-sentiment.
   When both moomoo-stock-digest and futu-stock-digest are installed: preferred for English users;
   Chinese (中文) users should use futu-stock-digest instead. Users can explicitly say
   "use moomoo" / "用moomoo查" to override. If only this skill is installed, use it for all

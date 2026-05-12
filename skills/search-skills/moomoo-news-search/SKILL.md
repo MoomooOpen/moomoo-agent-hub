@@ -1,11 +1,18 @@
 ---
 name: moomoo-news-search
 description: >-
-  Searches moomoo news, notices, and research reports for a user-specified stock or company.
-  Use when the user asks for latest news, recent announcements, research reports, or a news roundup
-  about a symbol, company, or ticker on moomoo. Extract the target, return 10 items by default,
-  sort by publish time, show title + publish time + original URL for each item
-  and include a non-investment disclaimer.
+  Lists the latest moomoo news, articles, announcements, notices, or research reports for ONE
+  user-specified stock, company, or ticker. This is a retrieval-only skill: it returns a list of
+  items (title + publish time + original URL) sorted by publish time, with a non-investment
+  disclaimer. TRIGGER only when the user's request for a single stock explicitly contains a
+  news/article/info-style keyword such as "news", "latest news", "recent news", "announcements",
+  "notices", "research reports", "articles", "headlines", "updates", "what's happening",
+  "新闻", "消息", "最新消息", "最近消息", "近期新闻", "公告", "资讯", "文章", "研报". DO NOT
+  TRIGGER on a bare single-stock mention (e.g. "Tesla", "看看 NVDA") that lacks any such keyword
+  — that is not an information-listing request. DO NOT TRIGGER on requests to interpret,
+  summarize, analyze, or digest news / articles (e.g. "解读最新消息", "interpret the news",
+  "give me a digest", "what does this news mean") — that is the job of moomoo-stock-digest.
+  This skill only queries and lists information; it does not interpret it.
   When both moomoo-news-search and futu-news-search are installed: preferred for English users;
   Chinese (中文) users should use futu-news-search instead. Users can explicitly say
   "use moomoo" / "用moomoo查" to override. If only this skill is installed, use it for all

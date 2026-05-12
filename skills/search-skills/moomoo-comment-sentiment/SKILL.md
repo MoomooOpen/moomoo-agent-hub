@@ -1,12 +1,19 @@
 ---
 name: moomoo-comment-sentiment
 description: >-
-  Aggregates real-time moomoo community/feed discussions for one or more user-specified
-  symbols, filters low-quality posts, classifies sentiment as bullish, bearish,
-  or neutral, and returns a structured community sentiment snapshot for a single
-  stock or a multi-symbol portfolio. Use when the user asks for stock community
-  sentiment, retail discussion tone, portfolio sentiment snapshot, bullish vs
-  bearish discussion, or moomoo-comment-sentiment.
+  Judges and analyzes the bullish vs bearish SENTIMENT around one or more user-specified stocks
+  by aggregating real-time moomoo community/feed discussions, filtering low-quality posts, and
+  classifying the overall mood as bullish, bearish, or neutral. Returns a structured community
+  sentiment snapshot for a single stock or a multi-symbol portfolio. TRIGGER only when the
+  user's request explicitly asks about SENTIMENT, mood, market wind, or community/retail
+  opinion — keywords include "sentiment", "bullish", "bearish", "看多", "看空", "情绪",
+  "社区情绪", "市场情绪", "舆情", "讨论氛围", "风向", "股票风向", "散户怎么看",
+  "大家怎么看", "community mood", "retail tone", "discussion tone", "bullish vs bearish".
+  DO NOT TRIGGER on a bare single-stock mention without any sentiment-style keyword (e.g.
+  "Tesla", "看看 NVDA"). DO NOT TRIGGER on requests to LIST news / articles / announcements
+  (that is moomoo-news-search). DO NOT TRIGGER on requests to INTERPRET / SUMMARIZE / DIGEST
+  news (that is moomoo-stock-digest). This skill is sentiment-only — based on community
+  posts, not news.
   When both moomoo-comment-sentiment and futu-comment-sentiment are installed: preferred for
   English users; Chinese (中文) users should use futu-comment-sentiment instead. Users can
   explicitly say "use moomoo" / "用moomoo查" to override. If only this skill is installed,

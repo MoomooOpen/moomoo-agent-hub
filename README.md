@@ -53,7 +53,7 @@ Moomoo Agent Hub ships **8 production-ready Skills** across **3 categories**:
 The manager is a stdlib-Python CLI that installs / upgrades / uninstalls skills, generates a self-discovery skill for your AI client, and OTA-upgrades itself. One-line installer:
 
 ```bash
-curl -fsSL "https://gitlab.futunn.com/futu-common/futu-skills-hub/-/raw/v20260428-futu-cli_v2/internal/moomoo/moomoo-install.sh" | bash
+curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/moomoo-install.sh" | bash
 ```
 
 This deploys the manager under `~/.moomoo-skillhub/`, drops a `moomoo-skills` wrapper into `~/.local/bin/`, and adds it to your PATH.
@@ -71,8 +71,8 @@ Pick the skill you need from [Skills Overview](#skills-overview), then either:
 
 ```bash
 # via npx skills (community tool, requires Node 18+)
-npx skills add -y -g https://gitlab.futunn.com/futu-common/futu-skills-hub.git#v20260428-futu-cli_v2 \
-  --path internal/moomoo/<category>/<slug>
+npx skills add -y -g https://github.com/MoomooOpen/moomoo-agent-hub.git#feature/v20260512-add-skills \
+  --path skills/<category>/<slug>
 
 # or via moomoo-skills (recommended — handles deps + version-check injection)
 moomoo-skills install <slug>

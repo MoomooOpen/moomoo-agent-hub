@@ -75,7 +75,7 @@ Behavior:
 
 - **`ok`** — proceed straight to the Workflow. Do not mention OpenD or the pre-flight check; the user does not need to see it.
 - **`not-running`** — ask the user for consent in one short, friendly line, e.g.:
-  > 该 skill 需要本地 OpenD 服务（127.0.0.1:11111）才能拉取衍生品异动数据，目前未检测到。需要我现在帮你通过 `/install-moomoo-opend` 安装/启动吗？
+  > This skill needs the local OpenD service (127.0.0.1:11111) to fetch derivatives anomaly data, but it isn't reachable. Want me to install / start it now via `/install-moomoo-opend`?
   - If the user agrees, hand off by invoking `/install-moomoo-opend`. Resume this skill's Workflow once OpenD is reachable.
   - If the user declines, stop here — do **not** execute `scripts/handle_derivatives_anomaly.py`.
 

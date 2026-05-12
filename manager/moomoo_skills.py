@@ -947,6 +947,12 @@ def _refresh_discovery_skill(
         f"Moomoo SkillHub skill discovery. Suggests installing uninstalled skills. "
         f"TRIGGER when: {trigger_str}. "
         f"MUST activate BEFORE other installed skills when the request matches above. "
+        f"DO NOT activate for `moomoo-skills` CLI invocations such as "
+        f"`moomoo-skills check`, `moomoo-skills list`, `moomoo-skills install`, "
+        f"`moomoo-skills upgrade`, `moomoo-skills uninstall`, or any embedded "
+        f"version-check probe (e.g. `moomoo-skills check --quiet | grep '^...'`) "
+        f"that appears inside another skill's Bash invocation — those are CLI "
+        f"management commands, not user intent to discover/install skills. "
         f"Related keywords: {kw_str}."
     )
     lines.append("description: >-")
@@ -961,46 +967,48 @@ def _refresh_discovery_skill(
     lines.append("")
     lines.append("The following skills can be installed via the `npx skills add` commands shown below.")
     lines.append("When the user's request matches a skill listed below,")
-    lines.append("tell the user this skill is available and ask: **若您同意，我可以帮您直接安装。**")
+    lines.append("tell the user this skill is available and ask: **If you agree, I can install it for you right away.**")
     lines.append("")
     lines.append("**IMPORTANT**: If the user's request matches an uninstalled skill below,")
     lines.append("do NOT use another installed skill as a substitute — prompt the user to install")
     lines.append("the correct skill instead. Each skill has a distinct purpose.")
     lines.append("")
-    lines.append("## 用户同意安装后的行为（Post-install behavior）")
+    lines.append("## Post-install behavior")
     lines.append("")
-    lines.append("用户同意安装后，按以下顺序执行，**不要让用户重新输入原始请求**：")
+    lines.append("Once the user agrees to install, follow this order — **do NOT ask the user to retype their original request**:")
     lines.append("")
-    lines.append("1. 运行下方对应的 `npx skills add` 安装命令。")
-    lines.append("2. 安装成功后，**直接读取**新装目录下的 `SKILL.md`（用 Read 工具按路径读取即可），")
-    lines.append("   按其内容继续完成用户**最初的请求**。")
-    lines.append("   - 注意：本次会话的 Skill 工具白名单在会话开启时已锁定，新装 slug 通常不在其中。")
-    lines.append("     **不要**尝试用 Skill 工具调用新 slug，会被拒绝。直接 Read 该 SKILL.md 并按其指令执行。")
-    lines.append("3. 全程无需再次询问用户「现在要做什么」——原始意图已在上下文中。")
+    lines.append("1. Run the corresponding `npx skills add` install command shown below.")
+    lines.append("2. After installation succeeds, **directly Read** the `SKILL.md` in the newly installed directory")
+    lines.append("   (use the Read tool with the path), then continue fulfilling the user's **original request** by following its instructions.")
+    lines.append("   - Note: this session's Skill tool whitelist is locked at session start, so the new slug")
+    lines.append("     is usually not in it. **Do NOT** try to invoke the new slug via the Skill tool — it will be rejected.")
+    lines.append("     Just Read that `SKILL.md` and execute according to its content.")
+    lines.append("3. Throughout the process, never ask the user \"what do you want to do now?\" — the original intent is already in context.")
     lines.append("")
-    lines.append("## 用户拒绝安装时的行为（Decline fallback）")
+    lines.append("## Decline fallback")
     lines.append("")
-    lines.append("如果用户**拒绝安装**或**明确表示不想装**，**不要**再次劝说，也**不要**用其它已装 skill 顶替，")
-    lines.append("而是**直接使用大模型自身的通用能力**回答用户原始问题（基于训练知识、推理、")
-    lines.append("已有上下文等），并在适当处简短说明该能力依赖未安装的专用技能、本次回答可能不及专用技能精确。")
+    lines.append("If the user **declines installation** or **explicitly says they don't want it**, do **not** push again,")
+    lines.append("and do **not** substitute another installed skill. Instead, **answer the user's original question using")
+    lines.append("the model's own general capabilities** (training knowledge, reasoning, existing context, etc.),")
+    lines.append("and briefly note that the answer relies on a missing dedicated skill and may be less precise than the dedicated one.")
     lines.append("")
-    lines.append("## 多技能匹配处理（Multi-match handling）")
+    lines.append("## Multi-match handling")
     lines.append("")
-    lines.append("**当用户的请求同时匹配下方多个未安装技能时，绝对不要一次性全部安装。**")
-    lines.append("必须先列出所有匹配的技能（slug + 简要描述），然后询问用户希望安装哪些，例如：")
+    lines.append("**When the user's request matches multiple uninstalled skills below, absolutely do NOT install all of them at once.**")
+    lines.append("You MUST first list every matching skill (slug + brief description), then ask the user which to install. For example:")
     lines.append("")
-    lines.append("> 您的请求匹配到多个可安装的技能：`a`、`b`、`c`。")
-    lines.append("> 请使用 `--skill a` 安装单个，或 `--skill a,b` 安装多个（逗号分隔，无空格）；")
-    lines.append("> 也可以回复 `--skill all` 表示全部安装。")
+    lines.append("> Your request matches multiple installable skills: `a`, `b`, `c`.")
+    lines.append("> Reply with `--skill a` to install one, `--skill a,b` to install multiple (comma-separated, no spaces),")
+    lines.append("> or `--skill all` to install every match.")
     lines.append("")
-    lines.append("解析用户回复中的 `--skill` 参数：")
-    lines.append("- `--skill <slug>`：仅安装该单个 slug 对应的技能。")
-    lines.append("- `--skill <slug1>,<slug2>,...`：仅安装逗号分隔列表中明确列出的 slug。")
-    lines.append("- `--skill all`：安装所有匹配项（仅当用户显式声明时才执行）。")
-    lines.append("- 未指定 `--skill` 或用户未明确确认 → **不要安装任何技能**，再次询问。")
+    lines.append("Parse the `--skill` argument in the user's reply:")
+    lines.append("- `--skill <slug>`: install only that single slug.")
+    lines.append("- `--skill <slug1>,<slug2>,...`: install only the slugs explicitly listed in the comma-separated list.")
+    lines.append("- `--skill all`: install every match (only when the user explicitly says so).")
+    lines.append("- No `--skill` provided or no explicit confirmation → **do NOT install any skill**; ask again.")
     lines.append("")
-    lines.append("对于用户指定的每个 slug，依次执行其下方对应的 `npx skills add` 命令；")
-    lines.append("**严禁** 把未在 `--skill` 列表中出现的 slug 一并安装。")
+    lines.append("For each slug the user specified, run its corresponding `npx skills add` command in turn;")
+    lines.append("**never** install slugs that did not appear in the `--skill` list.")
     lines.append("")
 
     for s in uninstalled:
@@ -1052,7 +1060,7 @@ def _wrap_yaml(lines: List[str], text: str, indent: int = 2) -> None:
 # Version-check injection (installed SKILL.md post-processing)
 # ---------------------------------------------------------------------------
 
-_VC_MARKERS = ("## CLI: Version Update Check", "## CLI: 版本更新检查")
+_VC_MARKERS = ("## CLI: Version Update Check",)
 
 _VC_EN = (
     "## CLI: Version Update Check\n"
@@ -1091,40 +1099,6 @@ _VC_EN = (
     "this single Bash call. Do not produce any additional tool calls.\n"
 )
 
-_VC_ZH = (
-    "## CLI: 版本更新检查\n"
-    "\n"
-    "将版本检查**嵌入技能的唯一一次 Bash 调用**中，"
-    "**不得为版本检查单独发起任何工具调用**。\n"
-    "\n"
-    "在业务命令（如 `curl`）**前面**以后台子进程启动检查，"
-    "在业务命令**后面**用 `wait` 等待检查完成并读取结果，整体结构如下：\n"
-    "\n"
-    "```bash\n"
-    "{cli} check --quiet 2>/dev/null | grep '^{slug}' "
-    "> /tmp/.{slug}-update 2>/dev/null & "
-    "curl -sG '...' ...; "
-    "wait; "
-    "cat /tmp/.{slug}-update 2>/dev/null; "
-    "rm -f /tmp/.{slug}-update\n"
-    "```\n"
-    "\n"
-    "根据 `cat` 的输出判断：\n"
-    "\n"
-    "- **无内容**（技能已是最新、`{cli}` 未安装、或检查失败）："
-    "不显示任何升级提示。\n"
-    "- **有内容**（当前技能有新版本）：在回复**末尾**追加提示：\n"
-    "  > `{slug}` 有新版本可用，若您同意，我可以立即为您升级。\n"
-    "\n"
-    "  如果用户同意，执行 `{cli} upgrade {slug}` 进行升级。\n"
-    "\n"
-    "若 `{cli}` 未安装或检查遇到任何错误，静默跳过，不影响技能正常执行。\n"
-    "\n"
-    "**重要**：版本检查（写入 + 读取）必须全部嵌入这一次 Bash 调用，"
-    "不得产生额外的工具调用。\n"
-)
-
-
 def _inject_version_check(skill_dir: Path, slug: str, cli: str) -> None:
     """Inject version-check instructions into the installed SKILL.md.
 
@@ -1143,16 +1117,8 @@ def _inject_version_check(skill_dir: Path, slug: str, cli: str) -> None:
         if marker in text:
             return
 
-    # Language detection – check body (after frontmatter) for CJK vs Latin ratio
-    body = text
     parts = text.split("---", 2)
-    if len(parts) >= 3:
-        body = parts[2]
-    cjk_count = len(re.findall(r"[\u4e00-\u9fff]", body))
-    latin_count = len(re.findall(r"[a-zA-Z]", body))
-    is_chinese = cjk_count > latin_count * 0.3 if latin_count else cjk_count > 0
-
-    section = (_VC_ZH if is_chinese else _VC_EN).format(cli=cli, slug=slug)
+    section = _VC_EN.format(cli=cli, slug=slug)
 
     # Insert after frontmatter, before first body content
     if len(parts) >= 3:
@@ -1784,7 +1750,7 @@ def cmd_check(args: argparse.Namespace) -> None:
 
     if r["outdated"]:
         print(
-            "\n若您同意，我可以帮您直接升级。",
+            "\nIf you agree, I can upgrade them for you right away.",
             file=sys.stderr,
         )
     if args.strict and r["outdated"]:
@@ -1822,7 +1788,7 @@ def maybe_announce_skill_updates(args: argparse.Namespace) -> None:
     print(
         "[moomoo-skillhub] Updates available: "
         + ", ".join(parts)
-        + ". 若您同意，我可以帮您直接升级。",
+        + ". If you agree, I can upgrade them for you right away.",
         file=sys.stderr,
     )
 

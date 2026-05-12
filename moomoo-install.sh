@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Moomoo Skills Hub CLI — one-line installer (deploys CLI under ~/.moomoo-skillhub, adds ~/.local/bin to PATH).
 # Usage:
-#   curl -fsSL "https://gitlab.futunn.com/futu-common/futu-skills-hub/-/raw/v20260428-futu-cli_v2/internal/moomoo/moomoo-install.sh" | bash
+#   curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/moomoo-install.sh" | bash
 #   ./moomoo-install.sh
 #
 # Override remote git repo (takes precedence over cli_update_manifest.json):
 #   export MOOMOO_SKILLHUB_REPO_URL="https://github.com/your-org/moomoo-skills-hub"
 #   export MOOMOO_SKILLHUB_REPO_REF="main"
-#   export MOOMOO_SKILLHUB_REPO_PATH="internal/moomoo/moomoo-skill-manager"
+#   export MOOMOO_SKILLHUB_REPO_PATH="manager"
 #
 # Offline / dev: run from repo root so local moomoo-skill-manager/ is copied.
 
@@ -19,9 +19,9 @@ BIN_DIR="${HOME}/.local/bin"
 WRAPPER="${BIN_DIR}/moomoo-skills"
 
 # Resolve remote repo: env override > cli_update_manifest.json > hardcoded fallback.
-FALLBACK_REPO_URL="https://gitlab.futunn.com/futu-common/futu-skills-hub"
-FALLBACK_REPO_REF="main"
-FALLBACK_REPO_PATH="internal/moomoo/moomoo-skill-manager"
+FALLBACK_REPO_URL="https://github.com/MoomooOpen/moomoo-agent-hub"
+FALLBACK_REPO_REF="feature/v20260512-add-skills"
+FALLBACK_REPO_PATH="manager"
 REMOTE_REPO_URL="${MOOMOO_SKILLHUB_REPO_URL:-}"
 REMOTE_REPO_REF="${MOOMOO_SKILLHUB_REPO_REF:-}"
 REMOTE_REPO_PATH="${MOOMOO_SKILLHUB_REPO_PATH:-}"
