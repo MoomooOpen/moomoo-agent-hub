@@ -1,0 +1,6 @@
+{
+  "version": "2026.5.12",
+  "cli_repo_url": "https://github.com/MoomooOpen/moomoo-agent-hub",
+  "cli_repo_ref": "feature/v20260512-add-skills",
+  "cli_repo_path": "manager"
+}

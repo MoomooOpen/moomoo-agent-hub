@@ -1,0 +1,22 @@
+{
+  "updated": "2026-05-12",
+  "note": "Published latest versions for installed skills; bump when a skill ships without requiring a new CLI.",
+  "deprecations": {
+    "install-opend": {
+      "action": "migrate",
+      "replace_with": "install-moomoo-opend",
+      "message": "install-opend has been renamed to install-moomoo-opend."
+    }
+  },
+  "skills": {
+    "moomoo-news-search": "0.0.2",
+    "moomoo-stock-digest": "0.0.3",
+    "moomoo-comment-sentiment": "0.0.3",
+    "moomooapi": "0.1.1",
+    "install-opend": "0.0.1",
+    "install-moomoo-opend": "0.1.1",
+    "moomoo-capital-anomaly": "0.0.1",
+    "moomoo-derivatives-anomaly": "0.0.1",
+    "moomoo-technical-anomaly": "0.0.1"
+  }
+}

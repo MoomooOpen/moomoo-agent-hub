@@ -1,0 +1,13 @@
+{
+  "hub_name": "moomoo-skillhub",
+  "index_file": "skill_index.json",
+  "skill_catalog_url": "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/manager/skill_catalog.json",
+  "cli_update_manifest_url": "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/manager/cli_update_manifest.json",
+  "repo_url": "https://github.com/MoomooOpen/moomoo-agent-hub",
+  "repo_ref": "feature/v20260512-add-skills",
+  "search_url": "",
+  "primary_download_url_template": "",
+  "skills_lock_filename": ".skills_store_lock.json",
+  "config_dirname": ".moomoo-skillhub",
+  "config_filename": "config.json"
+}

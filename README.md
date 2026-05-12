@@ -1,313 +1,297 @@
 
-<h1 align="center">Futu Agent Hub</h1>
+<h1 align="center">Moomoo Agent Hub</h1>
 <p align="center">
-  <b>Connect AI agents to Futu/moomoo — trade, query market data, and get investment insights through natural language.</b>
+  <b>Connect AI agents to Moomoo — trade, query market data, detect anomalies, and surface news / sentiment through natural language.</b>
 </p>
 
 <p align="center">
-  <a href="https://openapi.futunn.com/futu-api-doc/"><img src="https://img.shields.io/badge/Moomoo_API-Docs-blue?style=flat-square" alt="Moomoo API Docs" /></a>
+  <a href="https://openapi.moomoo.com/moomoo-api-doc/"><img src="https://img.shields.io/badge/Moomoo_API-Docs-blue?style=flat-square" alt="Moomoo API Docs" /></a>
   <a href="#license"><img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" /></a>
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-Compatible-purple?style=flat-square" alt="MCP Compatible" /></a>
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-moomoo-api-skill">Moomoo API Skill</a> · <a href="#-content-skills">Content Skills</a> · <a href="#-examples">Examples</a>
+  <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-moomoo-api-skills">Moomoo API Skills</a> · <a href="#-anomaly-skills">Anomaly Skills</a> · <a href="#-search--content-skills">Search & Content Skills</a> · <a href="#-architecture">Architecture</a>
 </p>
 
 
 ---
 
-## What is Futu Agent Hub?
+## What is Moomoo Agent Hub?
 
-Futu Agent Hub is the official AI Agent skills center by **moomoo**, packaging the full power of the Moomoo API and financial content services into standardized Skills. It enables AI assistants to interact with real-time market data, execute trades, retrieve financial news, and gauge market sentiment — all through natural language.
+Moomoo Agent Hub is the official AI Agent **SkillHub** by **moomoo**. It is a distributable, self-upgrading skill registry that AI clients can auto-discover, packaging the full power of the Moomoo OpenAPI plus financial-content services into standardized Skills.
 
-Works with **Claude Code**, **Cursor**, **Claude Desktop**, **VS Code**, and other MCP-compatible AI tools.
+It enables AI assistants to interact with real-time market data, execute trades, retrieve financial news, run anomaly detection, and gauge market sentiment — all through natural language.
+
+Works with **Claude Code**, **Cursor**, **Claude Desktop**, **VS Code**, **JetBrains** and other MCP-compatible AI tools.
 
 ---
 
 ## Skills Overview
 
-Futu Agent Hub ships with **4 production-ready Skills** across two categories:
+Moomoo Agent Hub ships **8 production-ready Skills** across **3 categories**:
 
-| Skill | Category | Description |
-|-------|----------|-------------|
-| Moomoo API | Trading & Market Data | Full Moomoo API wrapped as a Skill — quotes, K-lines, order placement, positions, account management, and more |
-| News Search | Content | Search news, announcements, and research reports across the Futu platform |
-| Stock Briefing | Content | Get real-time factual updates and core analysis for any stock |
-| Sentiment Gauge | Content | Aggregated community sentiment, KOL opinions, and market mood as a standardized score |
+| Category | Skill | Description | OpenD Required |
+|----------|-------|-------------|----------------|
+| **Moomoo API** | `moomooapi` | Full Moomoo OpenAPI — quotes, K-lines, order placement, positions, account management | ✅ |
+| **Moomoo API** | `install-moomoo-opend` | One-shot installer for Moomoo OpenD + Python SDK | — |
+| **Anomaly** | `moomoo-capital-anomaly` | Capital-flow anomalies — fund distribution, broker activity, short-sell signals | ✅ |
+| **Anomaly** | `moomoo-derivatives-anomaly` | Derivatives anomalies — option IV / PCR / unusual activity / warrants | ✅ |
+| **Anomaly** | `moomoo-technical-anomaly` | Technical anomalies — K-line patterns, MACD / RSI / KDJ, golden/death cross | ✅ |
+| **Search / Content** | `moomoo-news-search` | Search news, notices, research reports across the moomoo platform | — |
+| **Search / Content** | `moomoo-stock-digest` | Aggregated single-stock news digest with directional analysis | — |
+| **Search / Content** | `moomoo-comment-sentiment` | Community comment sentiment + KOL viewpoints | — |
 
----
-
-## Moomoo API Skill
-
-The Moomoo API Skill wraps the entire [Moomoo API](https://openapi.futunn.com/futu-api-doc/) into an AI-callable interface. One Skill, full coverage.
-
-### Market Data
-
-| Capability | Description |
-|------------|-------------|
-| Real-time Quotes | Live prices for stocks, ETFs, options, futures, indices |
-| K-line / Candlestick | Historical and real-time K-line data at any granularity |
-| Order Book | Full depth bid/ask order book |
-| Tick-by-Tick | Trade-level tick data |
-| Time-sharing | Intraday time-sharing chart data |
-| Snapshots | Batch market snapshots |
-| Sector Quotes | Sector/industry lists and constituent stocks |
-| Options Chain | Expiry dates, strike prices, and full options chain |
-
-### Trading
-
-| Capability | Description |
-|------------|-------------|
-| Place Order | Market / limit / conditional orders |
-| Modify Order | Amend pending orders |
-| Cancel Order | Cancel open orders |
-| Order History | Today's and historical orders |
-| Trade History | Today's and historical fills |
-
-### Account & Portfolio
-
-| Capability | Description |
-|------------|-------------|
-| Account List | Query available trading accounts |
-| Funds | Available cash, buying power, margin status |
-| Positions | Current holdings with P&L |
-
-### Supported Markets
-
-| Market | Instruments |
-|--------|------------|
-| Hong Kong | Stocks, ETFs, Warrants, CBBCs, Options, Futures, Indices |
-| United States | NYSE / AMEX / NASDAQ Stocks, ETFs, Options, Futures |
-| China A-shares | Stocks, ETFs, Indices |
-| Singapore | Stocks |
-| Japan | Stocks |
-
----
-
-## Content Skills
-
-### News Search / 资讯搜索
-
-Search news, announcements, and research reports on the moomoo platform. Returns structured results with title, publish time, and deep links.
-
-| Feature | Detail |
-|---------|--------|
-| Endpoint | `GET /news_search` via `ai-news-search.futunn.com` |
-| Auth | Public — no API key required |
-| Languages | Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-HK`), English (`en`) |
-| Content Types | News (`1`), Notices/Announcements (`2`), Research Reports (`3`) |
-| Sort Options | By PV (`1`), By Time (`2`), By Heat (`3`) |
-| Max Results | Up to 50 per request |
-
-**Example prompts:**
-```
-Search for the latest news on NVIDIA
-搜索一下腾讯最近的重要新闻
-Find recent announcements for Tesla
-```
-
----
-
-### Stock Briefing / 个股解读
-
-Continuously delivers the latest factual updates and core analysis for the stocks you care about. One entry point to quickly learn what happened, why it matters, and what's worth watching.
-
-**Example prompts:**
-```
-帮我解读一下比亚迪最近发生了什么
-What's going on with Apple lately?
-Give me a quick briefing on Alibaba
-```
-
----
-
-### Sentiment Gauge / 情绪温度计
-
-Aggregates community sentiment, trending discussion topics, and KOL (Key Opinion Leader) views into a standardized sentiment reference — helping you gauge the market mood before making decisions.
-
-**Example prompts:**
-```
-看看社区对小米的情绪怎么样
-What's the market sentiment on TSLA?
-How are people feeling about Meituan?
-```
+`/install-moomoo-opend` is **only** required by the API and Anomaly skills. Search/Content skills call public HTTP endpoints and work without it.
 
 ---
 
 ## Quick Start
 
-### Prerequisites
+### 1. Install the SkillHub manager (`moomoo-skills`)
 
-1. A [moomoo](https://www.moomoo.com/) or [Futu NiuNiu](https://www.futunn.com/) account
-2. [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
-
----
-
-### Content Skills (News Search / Stock Briefing / Sentiment Gauge)
-
-Content Skills call public HTTP endpoints directly — **no OpenD or API SDK required**.
-
-Install with a single command:
+The manager is a stdlib-Python CLI that installs / upgrades / uninstalls skills, generates a self-discovery skill for your AI client, and OTA-upgrades itself. One-line installer:
 
 ```bash
-npx skills add https://github.com/anthropics/futu-agent-hub
+curl -fsSL "https://gitlab.futunn.com/futu-common/futu-skills-hub/-/raw/v20260428-futu-cli_v2/internal/moomoo/moomoo-install.sh" | bash
 ```
 
-Start using right away:
+This deploys the manager under `~/.moomoo-skillhub/`, drops a `moomoo-skills` wrapper into `~/.local/bin/`, and adds it to your PATH.
 
-```
-> Search for the latest news on NVIDIA
-> Give me a briefing on Tesla
-> What's the market sentiment on AAPL?
-```
+Verify:
 
----
-
-### Moomoo API Skill (Trading & Market Data)
-
-The Moomoo API Skill requires **OpenD** (local gateway) and the **API SDK**. Copy the following prompt and send it to your AI assistant — it will handle the full installation automatically:
-
-```
-Please follow the Moomoo API Skills Quick Start guide to install Skills and OpenD.
-Documentation: https://openapi.moomoo.com/moomoo-api-doc/file/moomoo-openapi-skills-CN.html
+```bash
+moomoo-skills --version
+moomoo-skills detect          # show which AI client / skills dir was detected
 ```
 
-> **Note:** Using the Moomoo API Skill requires API access to be enabled. Complete the questionnaire assessment and agreement confirmation in the app — see [permission guide](https://openapi.futunn.com/futu-api-doc/intro/authority.html).
+### 2. Install a skill
 
-The agent will automatically:
-1. Download and install the Skills to your global skills directory
-2. Download and install OpenD for your platform
-3. Set up the Python SDK
+Pick the skill you need from [Skills Overview](#skills-overview), then either:
 
-Supported platforms: **Windows** / **macOS** / **CentOS** / **Ubuntu**
+```bash
+# via npx skills (community tool, requires Node 18+)
+npx skills add -y -g https://gitlab.futunn.com/futu-common/futu-skills-hub.git#v20260428-futu-cli_v2 \
+  --path internal/moomoo/<category>/<slug>
 
-After the agent completes the setup, confirm the following skills are available:
+# or via moomoo-skills (recommended — handles deps + version-check injection)
+moomoo-skills install <slug>
+```
 
-- `install-opend` — OpenD Installation Assistant
-- `futuapi` — Trading & Market Data Assistant
+The manager auto-detects whether you are running inside Claude Code, Cursor, VS Code, JetBrains, or OpenClaw, and writes to the correct skills directory.
 
-Start using:
+### 3. (Optional) Install OpenD
+
+Required only for **API** and **Anomaly** skills. Easiest path: just say it to your AI assistant and it will run the installer skill for you:
+
+```
+/install-moomoo-opend
+```
+
+> Using the Moomoo API requires API access enabled — complete the questionnaire and agreement in the moomoo app. See the [permission guide](https://openapi.moomoo.com/moomoo-api-doc/intro/authority.html).
+
+### 4. Start using
 
 ```
 > Show me Tesla's real-time quote
 > Place a limit buy for 100 shares of TSLA at $250
-> What's my current buying power?
+> Search the latest news for NVIDIA
+> 看看 NVDA 最近有没有异动？
+> 帮我解读一下比亚迪最近发生了什么
 ```
 
 ---
 
-## Examples
+## Moomoo API Skills
 
-Once configured, interact with your AI assistant in natural language:
+### `moomooapi` — Trading & Market Data
 
-### Market Data
+Wraps the entire [Moomoo OpenAPI](https://openapi.moomoo.com/moomoo-api-doc/) into an AI-callable interface.
+
+| Capability | Description |
+|------------|-------------|
+| Real-time Quotes | Live prices for stocks, ETFs, options, futures, indices |
+| K-line / Candlestick | Historical and real-time K-line at any granularity |
+| Order Book | Full depth bid/ask order book |
+| Tick-by-Tick | Trade-level tick data |
+| Time-sharing | Intraday time-sharing chart data |
+| Snapshots | Batch market snapshots |
+| Sector Quotes | Sector / industry lists and constituents |
+| Options Chain | Expiry dates, strike prices, full options chain |
+| Place / Modify / Cancel Order | Market / limit / conditional, all amend/cancel paths |
+| Account & Funds | Account list, available cash, buying power, margin |
+| Positions | Current holdings with P&L |
+
+**Supported markets:** Hong Kong, US (NYSE/AMEX/NASDAQ), China A-shares, Singapore, Japan.
+
+### `install-moomoo-opend` — OpenD Installer
+
+Detects your platform (Windows / macOS / CentOS / Ubuntu), downloads the matching Moomoo OpenD release, sets up the Python SDK, and verifies the local TCP gateway. The API and Anomaly skills declare it as a `requires.skills` dependency, so the manager will pull it in automatically when needed.
+
+---
+
+## Anomaly Skills
+
+Three skills for "is anything odd happening with this stock?" detection. Each calls Moomoo OpenD's `get_*_unusual()` family via local Python scripts.
+
+| Skill | Triggers on | Signals |
+|-------|------------|---------|
+| `moomoo-capital-anomaly` | "capital flow / fund flow / short sell / who's buying" | Fund distribution, broker buy/sell, capital flow trend, short-sell volume & ratio |
+| `moomoo-derivatives-anomaly` | "options / IV / PCR / warrants" | Implied volatility, put/call ratio, unusual option activity, warrant flow |
+| `moomoo-technical-anomaly` | "K-line / MACD / RSI / overbought / golden cross" | Pattern detection across MACD, RSI, KDJ, CCI, K-line shapes |
+
+Each skill declares `metadata.requires.skills: [install-moomoo-opend, moomooapi]`, so installing one of them via `moomoo-skills install` will pull in OpenD setup automatically.
+
+**Example prompts:**
 ```
-查一下腾讯的实时报价
-Show me Tesla's daily K-line for the past 30 days
-美团的买卖盘情况怎么样？
-What's the current snapshot for AAPL?
+Are there any anomalies for NVDA today?
+看看 TSLA 期权有没有异动
+检查一下 AAPL 的技术面
 ```
 
-### Trading
-```
-以150港元限价买入腾讯1000股
-Place a limit buy for 100 shares of MSFT at $420
-撤销我最近的挂单
-Show me today's filled orders
-```
+---
 
-### Account
-```
-我的港股账户还有多少可用资金？
-Show me my US stock positions
-What's my current buying power?
-```
+## Search & Content Skills
 
-### News & Insights
+Three skills calling public moomoo HTTP endpoints — **no OpenD required**.
+
+### `moomoo-news-search` — News Search
+
+| Feature | Detail |
+|---------|--------|
+| Endpoint | `GET /news_search` via `ai-news-search.moomoo.com` |
+| Auth | Public — no API key required |
+| Languages | Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-HK`), English (`en`) |
+| Content types | News, Notices/Announcements, Research Reports |
+| Sort | By PV, By Time, By Heat |
+| Max results | 50 per request |
+
+### `moomoo-stock-digest` — Stock Briefing
+
+Continuously delivers the latest factual updates and core analysis for a given stock — what happened, why it matters, what's worth watching. Batch-input multiple symbols supported.
+
+### `moomoo-comment-sentiment` — Sentiment Gauge
+
+Aggregates community discussion + KOL views into a standardized sentiment score, so you can read the room before deciding.
+
+**Example prompts:**
 ```
-搜索一下英伟达最近的重要新闻
-Give me a briefing on BYD — what happened recently?
+Search for the latest news on NVIDIA
+帮我解读一下比亚迪最近发生了什么
 看看社区对小米的情绪怎么样
-What's the sentiment on Tesla right now?
 ```
+
+---
+
+## SkillHub manager (`moomoo-skills`)
+
+The manager isn't required for skills to work — but it gives you self-upgrade, dependency resolution, and a self-discovery skill that lets your AI client suggest uninstalled skills when relevant.
+
+Subcommand cheatsheet:
+
+```
+moomoo-skills search <q>            # search the skill index
+moomoo-skills list                  # already-installed skills
+moomoo-skills install <slug>        # install (recursively pulls deps)
+moomoo-skills upgrade [<slug>]      # upgrade one or all
+moomoo-skills uninstall <slug>
+moomoo-skills check                 # CLI + skill update check
+moomoo-skills self-upgrade          # upgrade the CLI itself
+moomoo-skills detect                # show the AI client + skills dir it picks
+moomoo-skills refresh-discovery     # regenerate the auto-discovery SKILL.md
+```
+
+**Auto self-upgrade.** On every invocation the CLI silently checks `cli_update_manifest.json`; if a newer version is published it `git clone`s the new manager code and `os.execv`s itself with the same args. Disable with `--skip-self-upgrade` or `MOOMOO_SKILLHUB_SKIP_SELF_UPGRADE=1`.
+
+**Self-discovery skill.** Every install/uninstall/upgrade refreshes `<skills-dir>/_moomoo-skillhub/SKILL.md`, listing all *not-yet-installed* skills together with their `discovery_hint` and the exact `npx skills add` command. AI clients load it as a regular skill, so when a user query matches an uninstalled skill's hint, the assistant prompts the user to install it. Once everything is installed, the discovery skill is removed.
+
+**Per-product isolation.** This hub manages only `product=moomoo` skills. Coexists cleanly with `futu-skillhub` on the same machine — each manager touches only its own product.
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────┐
-│              AI Assistant                     │
-│  (Claude Code / Cursor / Claude Desktop)     │
-└──────────────────┬───────────────────────────┘
-                   │ Skills Protocol
-                   ▼
-┌──────────────────────────────────────────────┐
-│           Futu Agent Hub                     │
-│                                              │
-│  ┌────────────┐  ┌────────────────────────┐  │
-│  │ Moomoo API │  │    Content Skills      │  │
-│  │   Skill    │  │                        │  │
-│  │            │  │  ┌──────────────────┐  │  │
-│  │  Trading   │  │  │  News Search     │  │  │
-│  │  Quotes    │  │  ├──────────────────┤  │  │
-│  │  Account   │  │  │  Stock Briefing  │  │  │
-│  │  Options   │  │  ├──────────────────┤  │  │
-│  │   ...      │  │  │  Sentiment Gauge │  │  │
-│  └─────┬──────┘  │  └────────┬─────────┘  │  │
-│        │         │           │             │  │
-└────────┼─────────┴───────────┼─────────────┘  │
-         │                     │
-         ▼                     ▼
-┌────────────────┐  ┌──────────────────────┐
-│     OpenD      │  │  moomoo Content APIs │
-│   (Gateway)    │  │  (Public HTTP)       │
-│                │  │                      │
-│  Local TCP     │  │  ai-news-search      │
-│  Connection    │  │  .futunn.com         │
-└────────┬───────┘  └──────────────────────┘
-         │
-         ▼
-┌────────────────┐
-│ moomoo Servers │
-│  (HK/US/CN/   │
-│   SG/JP)       │
-└────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                       AI Assistant                           │
+│   (Claude Code / Cursor / Claude Desktop / VS Code / JB)    │
+└────────────────────────────┬────────────────────────────────┘
+                             │ Skill protocol (SKILL.md)
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Moomoo Agent Hub                          │
+│                                                              │
+│   moomoo-skills CLI ─── install / upgrade / self-discovery   │
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │  Moomoo API     │  │  Anomaly        │  │  Search /    │ │
+│  │  Skills         │  │  Skills         │  │  Content     │ │
+│  │                 │  │                 │  │  Skills      │ │
+│  │  moomooapi      │  │  capital        │  │  news-search │ │
+│  │  install-opend  │  │  derivatives    │  │  stock-digest│ │
+│  │                 │  │  technical      │  │  sentiment   │ │
+│  └────────┬────────┘  └────────┬────────┘  └──────┬───────┘ │
+│           │                    │                  │         │
+└───────────┼────────────────────┼──────────────────┼─────────┘
+            │                    │                  │
+            ▼                    ▼                  ▼
+   ┌────────────────┐   ┌────────────────┐  ┌─────────────────┐
+   │     OpenD      │   │     OpenD      │  │  Public HTTP    │
+   │  (local TCP)   │   │  (local TCP)   │  │  ai-news-search │
+   └───────┬────────┘   └───────┬────────┘  │  .moomoo.com    │
+           │                    │            └─────────────────┘
+           ▼                    ▼
+   ┌────────────────────────────────────┐
+   │     Moomoo Servers (HK/US/CN/SG/JP) │
+   └────────────────────────────────────┘
 ```
+
+Source-of-truth files in this repo:
+
+| File | Purpose |
+|------|---------|
+| `manager/version.json` | CLI version baseline (OTA gate) |
+| `manager/cli_update_manifest.json` | OTA manifest — bump version + push to roll out new CLI |
+| `manager/metadata.json` | Hub config (`hub_name`, repo URL/ref, etc.) |
+| `manager/skill_index.json` | Skill catalog with discovery hints, drives search + self-discovery |
+| `manager/skill_catalog.json` | Per-skill latest version + deprecation/migration table |
+| `skill-self-upgrade.md` | Maintainer guide for embedding the CLI version-check block in SKILL.md |
 
 ---
 
 ## Security
 
-- **Credentials via env vars only** — never hardcoded in config or source files
-- **Trade confirmation** — write operations (order placement, modification, cancellation) require explicit user confirmation
-- **Local-first** — Moomoo API traffic routes through your local OpenD gateway via encrypted TCP
-- **Read-only mode** — restrict to market data queries only by omitting trade credentials
-- **Rate limiting** — respects Moomoo API's built-in rate limits and access controls
-- **Content Skills** — public endpoints with no user credentials transmitted; response data is non-financial reference only
+- **Credentials via env vars only** — never hardcoded
+- **Trade confirmation** — write operations require explicit user confirmation
+- **Local-first** — Moomoo API traffic routes through your local OpenD via encrypted TCP
+- **Read-only mode** — restrict to market data queries by omitting trade credentials
+- **Rate limiting** — respects Moomoo OpenAPI's built-in limits
+- **Content & Anomaly endpoints** — public HTTP, no user credentials transmitted; reference data only
 
 ---
 
 ## FAQ
 
 **Q: Do I need OpenD for all Skills?**
-A: No. Only the Moomoo API Skill requires OpenD. The Content Skills (News Search, Stock Briefing, Sentiment Gauge) call public HTTP APIs directly and work without OpenD.
+A: No. Only the **API** and **Anomaly** skills need OpenD. **Search/Content** skills call public HTTP and work without it.
 
-**Q: Is there any additional fee for using Futu Agent Hub?**
-A: No. Trading through the Moomoo API incurs no additional fees beyond standard brokerage commissions.
+**Q: Can I install skills without `moomoo-skills`?**
+A: Yes — `npx skills add` works directly. But you'll lose auto-upgrade, dependency resolution, and the self-discovery skill.
 
-**Q: Which programming languages are supported?**
-A: The Moomoo API SDK supports Python, Java, C#, C++, and JavaScript. The Agent Hub Skills work at a higher level and are language-agnostic — just install and use with your AI assistant.
+**Q: Can `moomoo-skills` and `futu-skills` coexist?**
+A: Yes. Each manager manages only its own product (`hub_name` in `metadata.json` carries the product), so they don't interfere.
 
-**Q: Can I use this with moomoo instead of Futu NiuNiu?**
-A: Yes. Futu NiuNiu and moomoo share the same API infrastructure. Both are fully supported.
+**Q: Is there any additional fee?**
+A: No. Trading through Moomoo OpenAPI incurs no fees beyond standard brokerage commissions.
+
+**Q: Which programming languages does the underlying SDK support?**
+A: Python, Java, C#, C++, JavaScript. The Skills sit above the SDK and are language-agnostic — install and use with your AI assistant.
 
 ---
 
 ## Disclaimer
 
-This project is for informational and educational purposes. All trading operations performed through Futu Agent Hub are at the user's own risk. AI-generated analysis and recommendations do not constitute investment advice. Please fully understand the associated risks before using trading features. Futu Agent Hub is not responsible for any financial losses.
+This project is for informational and educational purposes. All trading operations are at the user's own risk. AI-generated analysis does not constitute investment advice. Please fully understand the risks before using trading features. Moomoo Agent Hub is not responsible for any financial losses.
 
 ---
 
@@ -318,5 +302,5 @@ This project is for informational and educational purposes. All trading operatio
 ---
 
 <p align="center">
-  Built by <a href="https://www.futunn.com/">Futu</a> · Powered by <a href="https://openapi.futunn.com/">Moomoo API</a>
+  Built by <a href="https://www.moomoo.com/">moomoo</a> · Powered by <a href="https://openapi.moomoo.com/">Moomoo OpenAPI</a>
 </p>

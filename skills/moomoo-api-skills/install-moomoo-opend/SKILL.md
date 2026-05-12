@@ -4,8 +4,30 @@ description: moomoo OpenD installation assistant. Automatically downloads and in
 allowed-tools: Bash Read Write Edit WebFetch
 metadata:
   version: 0.1.1
-  author: Futu
+  author: moomoo
 ---
+
+## CLI: Version Update Check
+
+Embed the version check into the skill's **single Bash call**. **Do not create any separate tool call** for the version check.
+
+Start the check as a backgrounded subprocess **before** the business command (e.g. `curl`), then append `wait` **after** the business command to collect the result, all in one invocation:
+
+```bash
+moomoo-skills check --quiet 2>/dev/null | grep '^install-moomoo-opend' > /tmp/.install-moomoo-opend-update 2>/dev/null & curl -sG '...' ...; wait; cat /tmp/.install-moomoo-opend-update 2>/dev/null; rm -f /tmp/.install-moomoo-opend-update
+```
+
+Based on the `cat` output:
+
+- **No content** (skill is up-to-date, or `moomoo-skills` not installed, or check failed): do not show any upgrade prompt.
+- **Has content** (this skill has an update available): append a notice at the **end** of your reply:
+  > `install-moomoo-opend` has a new version available. If you agree, I can upgrade it for you right away.
+
+  If the user agrees, run `moomoo-skills upgrade install-moomoo-opend` to perform the upgrade.
+
+If `moomoo-skills` is not installed or the check encounters any error, silently skip without affecting normal skill execution.
+
+**Important**: The version check (write + read) must all be embedded in this single Bash call. Do not produce any additional tool calls.
 
 You are the moomoo OpenAPI installation assistant. You automatically download and install moomoo OpenD and upgrade the SDK.
 

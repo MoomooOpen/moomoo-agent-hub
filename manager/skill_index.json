@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "slug": "moomoo-news-search",
+      "name": "moomoo-news-search",
+      "product": "moomoo",
+      "description": "Moomoo news, notices, and research search",
+      "keywords": ["moomoo", "news", "search", "新闻"],
+      "discovery_hint": "User wants to know about a stock's news, announcements, or reports — any phrasing like latest news, recent news, any news, what's happening, 最新消息, 最近消息, 近期新闻 etc. (not stock interpretation/digest)"
+    },
+    {
+      "slug": "moomoo-stock-digest",
+      "name": "moomoo-stock-digest",
+      "product": "moomoo",
+      "description": "Moomoo single-stock news digest",
+      "keywords": ["moomoo", "digest", "summary", "摘要"],
+      "discovery_hint": "User asks for stock digest, single-stock interpretation, directional analysis, or news summary (not raw news listing, not community sentiment)"
+    },
+    {
+      "slug": "moomoo-comment-sentiment",
+      "name": "moomoo-comment-sentiment",
+      "product": "moomoo",
+      "description": "Moomoo community comment sentiment",
+      "keywords": ["moomoo", "sentiment", "情绪", "评论"],
+      "discovery_hint": "User asks for community sentiment, retail discussion tone, bullish vs bearish discussion, or comment analysis (based on community posts, not news)"
+    },
+    {
+      "slug": "moomooapi",
+      "name": "moomooapi",
+      "product": "moomoo",
+      "description": "Moomoo OpenAPI quotes and trading",
+      "keywords": ["moomoo", "openapi", "quote", "trade", "行情", "交易"],
+      "discovery_hint": "User mentions quotes, prices, K-line, order book, trading, positions, account, options, or other OpenAPI features"
+    },
+    {
+      "slug": "install-moomoo-opend",
+      "name": "install-moomoo-opend",
+      "product": "moomoo",
+      "description": "Install / upgrade Moomoo OpenD and Python SDK",
+      "keywords": ["opend", "sdk", "install", "安装"],
+      "discovery_hint": "User mentions installing, downloading, launching, configuring OpenD or upgrading moomoo SDK"
+    },
+    {
+      "slug": "moomoo-capital-anomaly",
+      "name": "moomoo-capital-anomaly",
+      "product": "moomoo",
+      "description": "Moomoo capital-flow anomaly detection",
+      "keywords": ["moomoo", "capital", "anomaly", "fund flow", "short sell"],
+      "discovery_hint": "User asks about capital flow, institutional activity, large/small orders, who is buying/selling, broker trades, short selling, or gives a broad anomaly request like 'NVDA anomaly'"
+    },
+    {
+      "slug": "moomoo-derivatives-anomaly",
+      "name": "moomoo-derivatives-anomaly",
+      "product": "moomoo",
+      "description": "Moomoo derivatives anomaly detection",
+      "keywords": ["moomoo", "derivatives", "anomaly", "options", "warrants"],
+      "discovery_hint": "User asks about options, derivatives, warrants, IV, implied volatility, PCR, unusual option activity, put/call sentiment, or gives a broad anomaly request like 'TSLA anomaly'"
+    },
+    {
+      "slug": "moomoo-technical-anomaly",
+      "name": "moomoo-technical-anomaly",
+      "product": "moomoo",
+      "description": "Moomoo technical-analysis anomaly detection",
+      "keywords": ["moomoo", "technical", "anomaly", "K-line", "MACD", "RSI"],
+      "discovery_hint": "User asks about technical signals, K-line patterns, golden/death cross, overbought/oversold, MACD, RSI, KDJ, CCI, or gives a broad anomaly request like 'AAPL any anomalies'"
+    }
+  ]
+}
