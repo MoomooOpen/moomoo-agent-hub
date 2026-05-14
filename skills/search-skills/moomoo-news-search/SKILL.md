@@ -4,19 +4,21 @@ description: >-
   Lists the latest moomoo news, articles, announcements, notices, or research reports for ONE
   user-specified stock, company, or ticker. This is a retrieval-only skill: it returns a list of
   items (title + publish time + original URL) sorted by publish time, with a non-investment
-  disclaimer. TRIGGER only when the user's request for a single stock explicitly contains a
-  news/article/info-style keyword such as "news", "latest news", "recent news", "announcements",
-  "notices", "research reports", "articles", "headlines", "updates", "what's happening",
-  "新闻", "消息", "最新消息", "最近消息", "近期新闻", "公告", "资讯", "文章", "研报". DO NOT
-  TRIGGER on a bare single-stock mention (e.g. "Tesla", "看看 NVDA") that lacks any such keyword
-  — that is not an information-listing request. DO NOT TRIGGER on requests to interpret,
-  summarize, analyze, or digest news / articles (e.g. "解读最新消息", "interpret the news",
-  "give me a digest", "what does this news mean") — that is the job of moomoo-stock-digest.
-  This skill only queries and lists information; it does not interpret it.
-  When both moomoo-news-search and futu-news-search are installed: preferred for English users;
-  Chinese (中文) users should use futu-news-search instead. Users can explicitly say
-  "use moomoo" / "用moomoo查" to override. If only this skill is installed, use it for all
-  languages.
+  disclaimer. TRIGGER when the user asks about a single stock's news / 消息 / 资讯 / 公告 /
+  文章 / 研报 in any of these forms (this is the DEFAULT skill for plain news-listing
+  questions, even when no interpretation verb is used):
+  ① noun keyword present — "news", "latest news", "recent news", "announcements", "notices",
+  "research reports", "articles", "headlines", "updates", "新闻", "消息", "最新消息",
+  "最近消息", "近期新闻", "公告", "资讯", "文章", "研报"; ② question-form patterns —
+  "特斯拉最近有什么新闻？", "NVDA 有没有新闻？", "苹果最近什么消息？", "what's the news on X",
+  "any news on X", "latest news on X", "recent news about X", "what news about X",
+  "what's happening with X" (when used as a news query, not a sentiment query). DO NOT TRIGGER
+  on a bare single-stock mention with NO news/info keyword and NO question form (e.g. "Tesla",
+  "看看 NVDA"). DO NOT TRIGGER on requests to interpret, summarize, analyze, or digest the
+  news (e.g. "解读最新消息", "interpret the news", "give me a digest", "总结一下", "what does
+  this news mean / imply") — that goes to moomoo-stock-digest. DO NOT TRIGGER on community
+  sentiment / 看多看空 / 风向 questions — that goes to moomoo-comment-sentiment. This skill
+  only queries and lists information; it does not interpret it.
 metadata:
   version: 0.0.1
   author: moomoo
@@ -56,15 +58,9 @@ If `moomoo-skills` is not installed or the check encounters any error, silently 
 
 **Important**: The version check (write + read) must all be embedded in this single Bash call. Do not produce any additional tool calls.
 
-## Empty Result Fallback
+## Empty Result Handling
 
-When `futu-news-search` is also installed and this skill's API returns empty results (`data` is empty or `code` is not `0`), automatically retry with `futu-news-search` using the same parameters.
-
-After a successful fallback, inform the user:
-- English: "No results found on moomoo. Automatically switched to Futu for this query."
-- Chinese: "moomoo 暂无相关结果，已自动切换至富途牛牛平台为您查询。"
-
-If both platforms return empty, or if only this skill is installed (no Futu counterpart) and the API returns empty, show:
+When this skill's API returns empty results (`data` is empty or `code` is not `0`), show:
 - English: "No data available at the moment. Please try again later."
 - Chinese: "暂无相关数据，请稍后再试。"
 
@@ -238,8 +234,6 @@ Publish time: 2026-03-30 15:48:00
 URL: https://...
 
 The above content is compiled from public information and does not constitute investment advice.
-
-Source: moomoo | English queries default to moomoo; Chinese queries default to Futu. Say "use futu" to switch.
 ```
 
 ## Security

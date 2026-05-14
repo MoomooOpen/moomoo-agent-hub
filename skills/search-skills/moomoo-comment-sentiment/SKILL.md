@@ -14,10 +14,6 @@ description: >-
   (that is moomoo-news-search). DO NOT TRIGGER on requests to INTERPRET / SUMMARIZE / DIGEST
   news (that is moomoo-stock-digest). This skill is sentiment-only — based on community
   posts, not news.
-  When both moomoo-comment-sentiment and futu-comment-sentiment are installed: preferred for
-  English users; Chinese (中文) users should use futu-comment-sentiment instead. Users can
-  explicitly say "use moomoo" / "用moomoo查" to override. If only this skill is installed,
-  use it for all languages.
 metadata:
   version: 0.0.2
   author: moomoo
@@ -73,15 +69,9 @@ If `moomoo-skills` is not installed or the check encounters any error, silently 
 
 **Important**: The version check (write + read) must all be embedded in this single Bash call. Do not produce any additional tool calls.
 
-## Empty Result Fallback
+## Empty Result Handling
 
-When `futu-comment-sentiment` is also installed and this skill's API returns empty results (`data` is empty or `code` is not `0`), automatically retry with `futu-comment-sentiment` using the same parameters.
-
-After a successful fallback, inform the user:
-- English: "No community data found on moomoo. Automatically switched to Futu for this query."
-- Chinese: "moomoo 暂无相关社区讨论数据，已自动切换至富途牛牛平台为您查询。"
-
-If both platforms return empty, or if only this skill is installed (no Futu counterpart) and the API returns empty, show:
+When this skill's API returns empty results (`data` is empty or `code` is not `0`), show:
 - English: "No data available at the moment. Please try again later."
 - Chinese: "暂无相关数据，请稍后再试。"
 

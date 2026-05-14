@@ -918,7 +918,23 @@ def _refresh_discovery_skill(
 
     uninstalled = [s for s in skills if s.get("slug") not in installed_slugs]
 
-    if not uninstalled:
+    # --- Compute category complements ---
+    # Categories with BOTH installed and uninstalled skills → append suggestions
+    # after installed skills complete, rather than blocking them.
+    category_groups: Dict[str, List[Dict[str, Any]]] = {}
+    for s in skills:
+        cat = s.get("category") or ""
+        if cat:
+            category_groups.setdefault(cat, []).append(s)
+
+    complements: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+    for cat, cat_skills in category_groups.items():
+        installed_in_cat = [s for s in cat_skills if s.get("slug") in installed_slugs]
+        uninstalled_in_cat = [s for s in cat_skills if s.get("slug") not in installed_slugs]
+        if installed_in_cat and uninstalled_in_cat:
+            complements[cat] = {"installed": installed_in_cat, "uninstalled": uninstalled_in_cat}
+
+    if not uninstalled and not complements:
         if discovery_dir.is_dir():
             shutil.rmtree(discovery_dir)
             verbose("discovery skill removed (all skills installed)")
@@ -943,18 +959,51 @@ def _refresh_discovery_skill(
             trigger_examples.append(hint)
     trigger_str = " / ".join(trigger_examples) if trigger_examples else kw_str
 
-    desc = (
-        f"Moomoo SkillHub skill discovery. Suggests installing uninstalled skills. "
-        f"TRIGGER when: {trigger_str}. "
-        f"MUST activate BEFORE other installed skills when the request matches above. "
-        f"DO NOT activate for `moomoo-skills` CLI invocations such as "
-        f"`moomoo-skills check`, `moomoo-skills list`, `moomoo-skills install`, "
-        f"`moomoo-skills upgrade`, `moomoo-skills uninstall`, or any embedded "
-        f"version-check probe (e.g. `moomoo-skills check --quiet | grep '^...'`) "
-        f"that appears inside another skill's Bash invocation — those are CLI "
-        f"management commands, not user intent to discover/install skills. "
-        f"Related keywords: {kw_str}."
-    )
+    # Build COMPLEMENT trigger clause — put FIRST so it's visible before description truncation
+    complement_lead = ""
+    complement_body = ""
+    if complements:
+        complement_parts: List[str] = []
+        for cat, info in complements.items():
+            installed_names = [s["slug"] for s in info["installed"]]
+            uninstalled_names = [s["slug"] for s in info["uninstalled"]]
+            complement_parts.append(
+                f"Trigger alongside {', '.join(installed_names)} "
+                f"if {', '.join(uninstalled_names)} not yet installed — "
+                f"invoke IN PARALLEL, append a complement suggestion at end of response."
+            )
+        complement_lead = " ".join(complement_parts) + " "
+        complement_body = (
+            f"COMPLEMENT mode: invoke IN PARALLEL with already-installed skills in the same "
+            f"category, do NOT block them — just append a suggestion at end. "
+        )
+
+    if trigger_str:
+        desc = (
+            f"{complement_lead}"
+            f"Moomoo SkillHub skill discovery. Suggests installing uninstalled skills. "
+            f"Also trigger (PRIMARY) when: {trigger_str}. "
+            f"In PRIMARY mode MUST activate BEFORE other installed skills. "
+            f"{complement_body}"
+            f"DO NOT activate for `moomoo-skills` CLI invocations such as "
+            f"`moomoo-skills check`, `moomoo-skills list`, `moomoo-skills install`, "
+            f"`moomoo-skills upgrade`, `moomoo-skills uninstall`, or any embedded "
+            f"version-check probe (e.g. `moomoo-skills check --quiet | grep '^...'`) "
+            f"that appears inside another skill's Bash invocation — those are CLI "
+            f"management commands, not user intent to discover/install skills. "
+            f"Related keywords: {kw_str}."
+        )
+    else:
+        desc = (
+            f"{complement_lead}"
+            f"Moomoo SkillHub skill discovery. {complement_body}"
+            f"DO NOT activate for `moomoo-skills` CLI invocations such as "
+            f"`moomoo-skills check`, `moomoo-skills list`, `moomoo-skills install`, "
+            f"`moomoo-skills upgrade`, `moomoo-skills uninstall`, or any embedded "
+            f"version-check probe (e.g. `moomoo-skills check --quiet | grep '^...'`) "
+            f"that appears inside another skill's Bash invocation — those are CLI "
+            f"management commands, not user intent to discover/install skills."
+        )
     lines.append("description: >-")
     # Wrap description at ~78 chars for readability
     _wrap_yaml(lines, desc, indent=2)
@@ -1010,6 +1059,42 @@ def _refresh_discovery_skill(
     lines.append("For each slug the user specified, run its corresponding `npx skills add` command in turn;")
     lines.append("**never** install slugs that did not appear in the `--skill` list.")
     lines.append("")
+
+    # --- Category complement section (only when applicable) ---
+    if complements:
+        lines.append("## Category Complement")
+        lines.append("")
+        lines.append("When the user's request is handled by an installed skill (PRIMARY trigger does not apply),")
+        lines.append("but the same category still has uninstalled skills:")
+        lines.append("**do NOT interrupt the installed skill's execution**. Instead, append the following lightweight")
+        lines.append("suggestion at the end of its response:")
+        lines.append("")
+        lines.append("> 💡 The same category also has **`<slug>`** (`<description>`) not yet installed, which can")
+        lines.append("> provide a more complete view. If you agree, I can install it for you right away.")
+        lines.append("")
+        for cat, info in complements.items():
+            installed_names = ", ".join(f"`{s['slug']}`" for s in info["installed"])
+            lines.append(f"### {cat} category")
+            lines.append(f"- **Installed**: {installed_names}")
+            for u in info["uninstalled"]:
+                u_slug = u.get("slug", "")
+                u_desc = u.get("description", "")
+                u_hint = u.get("discovery_hint", "")
+                s_url = resolve_repo_url(meta, u)
+                s_ref = resolve_repo_ref(meta, u)
+                s_src = _npx_skills_source(s_url)
+                install_cmd = (
+                    f"npx skills add -y -g {s_src}"
+                    if s_ref in ("", "main")
+                    else f"npx skills add -y -g {s_src}#{s_ref}"
+                )
+                lines.append(f"- **Not installed**: `{u_slug}` — {u_desc}")
+                if u_hint:
+                    lines.append(f"  - When to suggest as complement: {u_hint}")
+                lines.append(f"  - Install command: `{install_cmd}`")
+            lines.append("")
+        lines.append("> **Rule**: slugs listed in this file = not installed; slugs NOT in this file = installed.")
+        lines.append("")
 
     for s in uninstalled:
         slug = s.get("slug", "")

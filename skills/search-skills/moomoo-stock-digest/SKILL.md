@@ -1,24 +1,20 @@
 ---
 name: moomoo-stock-digest
 description: >-
-  INTERPRETS / SUMMARIZES the latest public news for ONE user-specified stock or company by
-  calling the moomoo news search API directly, extracting key events, judging likely impact
-  direction (bullish / bearish / neutral), and returning a structured single-stock digest with
-  evidence links and a non-investment disclaimer. This skill is interpretation-only — it
-  produces a summary / digest / directional read, not a raw news list. TRIGGER only when the
-  user's request explicitly asks for interpretation, summary, digest, analysis, or directional
-  reading — keywords include "digest", "interpret", "interpretation", "summarize", "summary",
-  "analyze", "what does this mean", "what's going on with", "解读", "点评", "分析", "总结",
-  "摘要", "概要", "动态", "看一下…最近发生了什么", "stock digest", "news interpretation".
-  DO NOT TRIGGER on a bare single-stock mention without any interpret/summary keyword (e.g.
-  "Tesla", "看看 NVDA"). DO NOT TRIGGER when the user only wants to LIST / RETRIEVE news,
-  articles, announcements, or research reports without interpretation — that is the job of
-  moomoo-news-search. DO NOT TRIGGER on community sentiment / bullish-vs-bearish mood
-  questions — that is moomoo-comment-sentiment.
-  When both moomoo-stock-digest and futu-stock-digest are installed: preferred for English users;
-  Chinese (中文) users should use futu-stock-digest instead. Users can explicitly say
-  "use moomoo" / "用moomoo查" to override. If only this skill is installed, use it for all
-  languages.
+  Produces a single-stock NEWS DIGEST: extracts key events from the latest public news for ONE
+  user-specified stock, judges likely impact direction (bullish / bearish / neutral), and
+  returns a structured interpretation with evidence links and a non-investment disclaimer.
+  This skill is interpretation-only — it does NOT list or retrieve raw news. TRIGGER only when
+  the user explicitly asks for interpretation / summary / digest / analysis / directional
+  reading using a verb-style keyword: "digest", "interpret", "interpretation", "summarize",
+  "summary", "analyze", "analysis", "what does this mean / imply", "解读", "点评", "分析",
+  "总结", "摘要", "概要", "stock digest", "news interpretation". DO NOT TRIGGER on a bare
+  single-stock mention (e.g. "Tesla", "看看 NVDA"). DO NOT TRIGGER on plain news-listing
+  questions — any phrasing like "有什么新闻 / 有没有新闻 / 最近什么新闻 / 最近的新闻 /
+  最近有什么消息 / 最近发生了什么 / what news / any news / latest news / recent news /
+  what's happening with X" WITHOUT an explicit interpret/summary verb belongs to
+  moomoo-news-search, NOT this skill. DO NOT TRIGGER on community sentiment / bullish-vs-bearish
+  mood questions — that is moomoo-comment-sentiment.
 metadata:
   version: 0.0.2
   author: moomoo
@@ -71,15 +67,9 @@ If `moomoo-skills` is not installed or the check encounters any error, silently 
 
 **Important**: The version check (write + read) must all be embedded in this single Bash call. Do not produce any additional tool calls.
 
-## Empty Result Fallback
+## Empty Result Handling
 
-When `futu-stock-digest` is also installed and this skill's API returns empty results (`data` is empty or `code` is not `0`), automatically retry with `futu-stock-digest` using the same parameters.
-
-After a successful fallback, inform the user:
-- English: "No news data found on moomoo. Automatically switched to Futu for this digest."
-- Chinese: "moomoo 暂无相关新闻数据，已自动切换至富途牛牛平台为您解读。"
-
-If both platforms return empty, or if only this skill is installed (no Futu counterpart) and the API returns empty, show:
+When this skill's API returns empty results (`data` is empty or `code` is not `0`), show:
 - English: "No data available at the moment. Please try again later."
 - Chinese: "暂无相关数据，请稍后再试。"
 
@@ -387,8 +377,6 @@ https://...
 https://...
 
 This content is based on public information and does not constitute investment advice.
-
-Source: moomoo | English queries default to moomoo; Chinese queries default to Futu. Say "use futu" to switch.
 ```
 
 ---
