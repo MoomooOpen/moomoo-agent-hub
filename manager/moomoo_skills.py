@@ -1145,20 +1145,32 @@ def _wrap_yaml(lines: List[str], text: str, indent: int = 2) -> None:
 # Version-check injection (installed SKILL.md post-processing)
 # ---------------------------------------------------------------------------
 
-_VC_MARKERS = ("## CLI: Version Update Check",)
+_VC_MARKERS = ("## CLI: Version Update Check", "## CLI: 版本更新检查")
+
+_INSTALL_CMD = (
+    "curl -fsSL \"https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub"
+    "/feature/v20260512-add-skills/moomoo-install.sh\" | bash"
+)
 
 _VC_EN = (
     "## CLI: Version Update Check\n"
     "\n"
     "Embed the version check into the skill's **single Bash call**. "
-    "**Do not create any separate tool call** for the version check.\n"
+    "**Do not create any separate tool call** for the version check. "
+    "The same inline check must detect three things:\n"
+    "\n"
+    "1. whether the `{cli}` manager is installed locally;\n"
+    "2. whether this skill has a new version available;\n"
+    "3. whether the `{cli}` manager itself has a new version available.\n"
     "\n"
     "Start the check as a backgrounded subprocess **before** the business "
     "command (e.g. `curl`), then append `wait` **after** the business command "
     "to collect the result, all in one invocation:\n"
     "\n"
     "```bash\n"
-    "{cli} check --quiet 2>/dev/null | grep '^{slug}' "
+    "( if command -v {cli} >/dev/null 2>&1; then "
+    "{cli} check --quiet 2>/dev/null | grep -E '^(cli|{slug})'; "
+    "else echo '__CLI_MISSING__'; fi ) "
     "> /tmp/.{slug}-update 2>/dev/null & "
     "curl -sG '...' ...; "
     "wait; "
@@ -1168,20 +1180,103 @@ _VC_EN = (
     "\n"
     "Based on the `cat` output:\n"
     "\n"
-    "- **No content** (skill is up-to-date, or `{cli}` not installed, "
-    "or check failed): do not show any upgrade prompt.\n"
-    "- **Has content** (this skill has an update available): append a notice "
-    "at the **end** of your reply:\n"
+    "- **No content** (skill is up-to-date or the check failed): do not show "
+    "any upgrade prompt.\n"
+    "- **Output `__CLI_MISSING__`** (`{cli}` is not installed locally, so "
+    "version check/upgrade cannot run): append a notice at the **end** of "
+    "your reply:\n"
+    "  > The `{cli}` manager is not installed yet, so I cannot auto-check or "
+    "upgrade skill versions. If you agree, I can install it for you now.\n"
+    "\n"
+    "  If the user agrees, first run:\n"
+    "  ```bash\n"
+    "  {install_cmd}\n"
+    "  ```\n"
+    "  After install completes, run `{cli} upgrade {slug}` to bring this "
+    "skill to the latest version.\n"
+    "- **Output containing a line starting with `{slug}`** (this skill has "
+    "an update available): append a notice at the **end** of your reply:\n"
     "  > `{slug}` has a new version available. If you agree, I can upgrade "
     "it for you right away.\n"
     "\n"
-    "  If the user agrees, run `{cli} upgrade {slug}` to perform the upgrade.\n"
+    "  If the user agrees, run `{cli} upgrade {slug}` to perform the upgrade. "
+    "(This command also auto-upgrades the `{cli}` manager itself, so a "
+    "separate CLI prompt is unnecessary when a skill update is available.)\n"
+    "- **Output containing only a line starting with `cli`** (this skill is "
+    "up-to-date but the `{cli}` manager itself has a new version): append a "
+    "notice at the **end** of your reply:\n"
+    "  > The `{cli}` manager has a new version available. If you agree, I "
+    "can upgrade it for you right away.\n"
     "\n"
-    "If `{cli}` is not installed or the check encounters any error, silently "
-    "skip without affecting normal skill execution.\n"
+    "  If the user agrees, run `{cli} self-upgrade` to perform the upgrade.\n"
+    "\n"
+    "  If both a `cli` line and a `{slug}` line appear, only show the skill "
+    "upgrade prompt above — the manager will be refreshed as a side effect "
+    "of `{cli} upgrade {slug}`.\n"
+    "\n"
+    "**Never** run the install command or `{cli} upgrade …` without explicit "
+    "user consent. Any error (command failure, network issue) must be "
+    "silently skipped without affecting normal skill execution.\n"
     "\n"
     "**Important**: The version check (write + read) must all be embedded in "
     "this single Bash call. Do not produce any additional tool calls.\n"
+)
+
+_VC_ZH = (
+    "## CLI: 版本更新检查\n"
+    "\n"
+    "将版本检查**嵌入技能的唯一一次 Bash 调用**中，"
+    "**不得为版本检查单独发起任何工具调用**。检查同时识别三件事：\n"
+    "\n"
+    "1. `{cli}` 管理器是否已安装在本机；\n"
+    "2. 当前 Skill 是否有新版本；\n"
+    "3. `{cli}` 管理器自身是否有新版本。\n"
+    "\n"
+    "在业务命令（如 `curl`）**前面**以后台子进程启动检查，"
+    "在业务命令**后面**用 `wait` 等待检查完成并读取结果，整体结构如下：\n"
+    "\n"
+    "```bash\n"
+    "( if command -v {cli} >/dev/null 2>&1; then "
+    "{cli} check --quiet 2>/dev/null | grep -E '^(cli|{slug})'; "
+    "else echo '__CLI_MISSING__'; fi ) "
+    "> /tmp/.{slug}-update 2>/dev/null & "
+    "curl -sG '...' ...; "
+    "wait; "
+    "cat /tmp/.{slug}-update 2>/dev/null; "
+    "rm -f /tmp/.{slug}-update\n"
+    "```\n"
+    "\n"
+    "根据 `cat` 的输出判断：\n"
+    "\n"
+    "- **无内容**（技能已是最新或检查失败）：不显示任何升级提示。\n"
+    "- **输出 `__CLI_MISSING__`**（`{cli}` 未安装在本机，无法做版本检查/升级）："
+    "在回复**末尾**追加提示：\n"
+    "  > `{cli}` 管理器尚未安装，无法自动检查或升级技能版本。如果您同意，我可以现在为您安装。\n"
+    "\n"
+    "  若用户同意，先执行：\n"
+    "  ```bash\n"
+    "  {install_cmd}\n"
+    "  ```\n"
+    "  安装完成后再执行 `{cli} upgrade {slug}` 同步到最新版。\n"
+    "- **输出包含以 `{slug}` 开头的行**（当前技能有新版本）：在回复**末尾**追加提示：\n"
+    "  > `{slug}` 有新版本可用，若您同意，我可以立即为您升级。\n"
+    "\n"
+    "  若用户同意，执行 `{cli} upgrade {slug}` 进行升级。"
+    "（该命令会顺带升级 `{cli}` 管理器自身，因此 skill 有更新时无需再单独提示 CLI 升级。）\n"
+    "- **输出仅包含以 `cli` 开头的行**（当前技能已是最新，但 `{cli}` 管理器自身有新版本）："
+    "在回复**末尾**追加提示：\n"
+    "  > `{cli}` 管理器有新版本可用，若您同意，我可以立即为您升级。\n"
+    "\n"
+    "  若用户同意，执行 `{cli} self-upgrade` 进行升级。\n"
+    "\n"
+    "  若同时出现 `cli` 行和 `{slug}` 行，仅展示上面的 skill 升级提示——"
+    "`{cli} upgrade {slug}` 会顺带刷新管理器。\n"
+    "\n"
+    "未经用户同意时，**不得**自动执行安装命令或 `{cli} upgrade …`。"
+    "任何错误（命令失败、网络异常）一律静默跳过，不影响技能正常执行。\n"
+    "\n"
+    "**重要**：版本检查（写入 + 读取）必须全部嵌入这一次 Bash 调用，"
+    "不得产生额外的工具调用。\n"
 )
 
 def _inject_version_check(skill_dir: Path, slug: str, cli: str) -> None:
@@ -1202,8 +1297,16 @@ def _inject_version_check(skill_dir: Path, slug: str, cli: str) -> None:
         if marker in text:
             return
 
+    # Language detection – check body (after frontmatter) for CJK vs Latin ratio
     parts = text.split("---", 2)
-    section = _VC_EN.format(cli=cli, slug=slug)
+    body = parts[2] if len(parts) >= 3 else text
+    cjk_count = len(re.findall(r"[\u4e00-\u9fff]", body))
+    latin_count = len(re.findall(r"[a-zA-Z]", body))
+    is_chinese = cjk_count > latin_count * 0.3 if latin_count else cjk_count > 0
+
+    section = (_VC_ZH if is_chinese else _VC_EN).format(
+        cli=cli, slug=slug, install_cmd=_INSTALL_CMD
+    )
 
     # Insert after frontmatter, before first body content
     if len(parts) >= 3:
