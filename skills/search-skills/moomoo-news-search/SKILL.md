@@ -17,8 +17,10 @@ description: >-
   "看看 NVDA"). DO NOT TRIGGER on requests to interpret, summarize, analyze, or digest the
   news (e.g. "解读最新消息", "interpret the news", "give me a digest", "总结一下", "what does
   this news mean / imply") — that goes to moomoo-stock-digest. DO NOT TRIGGER on community
-  sentiment / 看多看空 / 风向 questions — that goes to moomoo-comment-sentiment. This skill
-  only queries and lists information; it does not interpret it.
+  sentiment / 看多看空 / 风向 questions — that goes to moomoo-comment-sentiment. DO NOT TRIGGER
+  on market anomaly / price movement queries (e.g. "TSLA anomaly", "特斯拉 异动", "NVDA 异动",
+  "异常波动", "unusual move") — those go to moomoo-capital-anomaly / moomoo-derivatives-anomaly /
+  moomoo-technical-anomaly. This skill only queries and lists information; it does not interpret it.
 metadata:
   version: 0.0.1
   author: moomoo
