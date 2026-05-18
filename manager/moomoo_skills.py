@@ -968,14 +968,13 @@ def _refresh_discovery_skill(
             installed_names = [s["slug"] for s in info["installed"]]
             uninstalled_names = [s["slug"] for s in info["uninstalled"]]
             complement_parts.append(
-                f"Trigger alongside {', '.join(installed_names)} "
-                f"if {', '.join(uninstalled_names)} not yet installed — "
-                f"invoke IN PARALLEL, append a complement suggestion at end of response."
+                f"If user request matches {', '.join(uninstalled_names)} (not yet installed), "
+                f"prompt user to install it — do NOT invoke {', '.join(installed_names)} as substitutes."
             )
         complement_lead = " ".join(complement_parts) + " "
         complement_body = (
-            f"COMPLEMENT mode: invoke IN PARALLEL with already-installed skills in the same "
-            f"category, do NOT block them — just append a suggestion at end. "
+            f"COMPLEMENT mode: when an uninstalled skill matches the request, prompt installation — "
+            f"do NOT substitute with installed skills from the same category. "
         )
 
     if trigger_str:
