@@ -1,19 +1,26 @@
 ---
 name: moomoo-comment-sentiment
 description: >-
-  Judges and analyzes the bullish vs bearish SENTIMENT around one or more user-specified stocks
-  by aggregating real-time moomoo community/feed discussions, filtering low-quality posts, and
-  classifying the overall mood as bullish, bearish, or neutral. Returns a structured community
-  sentiment snapshot for a single stock or a multi-symbol portfolio. TRIGGER only when the
-  user's request explicitly asks about SENTIMENT, mood, market wind, or community/retail
-  opinion — keywords include "sentiment", "bullish", "bearish", "看多", "看空", "情绪",
-  "社区情绪", "市场情绪", "舆情", "讨论氛围", "风向", "股票风向", "散户怎么看",
-  "大家怎么看", "community mood", "retail tone", "discussion tone", "bullish vs bearish".
-  DO NOT TRIGGER on a bare single-stock mention without any sentiment-style keyword (e.g.
-  "Tesla", "看看 NVDA"). DO NOT TRIGGER on requests to LIST news / articles / announcements
-  (that is moomoo-news-search). DO NOT TRIGGER on requests to INTERPRET / SUMMARIZE / DIGEST
-  news (that is moomoo-stock-digest). This skill is sentiment-only — based on community
-  posts, not news.
+  Judges the BULLISH vs BEARISH sentiment / mood / 风向 of a stock by aggregating
+  real-time moomoo community / feed / 帖子 / 评论 discussions for one or more
+  user-specified symbols, filtering low-quality posts, classifying each post as
+  bullish / bearish / neutral, and returning a structured community sentiment
+  snapshot (single stock or multi-symbol portfolio).
+  TRIGGER when the user asks about: 情绪 / 社区情绪 / 散户情绪 / 看多看空 /
+  多空情绪 / 牛熊 / 看涨看跌 / 风向 / 讨论氛围 / 评论怎么看 / 大家怎么看 /
+  bullish or bearish / sentiment / community mood / retail discussion tone /
+  portfolio sentiment snapshot. The signal here is community POSTS / COMMENTS,
+  not news, not price action.
+  SKIP in any of the following cases:
+  - the user wants a list of news / articles / announcements / research reports
+    (title + time + link) — that belongs to `moomoo-news-search`.
+  - the user wants news / 消息面 interpretation, summarization, impact analysis,
+    or 多空研判 based on news rather than community posts — that belongs to
+    `moomoo-stock-digest`.
+  - price/quote checks, 异动 / anomaly tracking, K线 / technical analysis,
+    holdings, or trade execution — none of these are sentiment requests.
+  A bare ticker or company name without a sentiment-intent keyword is NOT enough
+  to trigger this skill.
 metadata:
   version: 0.0.2
   author: moomoo

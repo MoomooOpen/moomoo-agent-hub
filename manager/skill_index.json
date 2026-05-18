@@ -6,43 +6,43 @@
       "name": "moomoo-news-search",
       "product": "moomoo",
       "category": "search",
-      "description": "List the latest moomoo news / articles / announcements / research reports for a single stock (retrieval only, no interpretation). Default for plain 'any news on X?' questions.",
-      "keywords": ["moomoo", "news", "article", "announcement", "notice", "research", "headlines", "新闻", "消息", "公告", "资讯", "文章", "研报", "有什么新闻", "最近新闻", "any news", "latest news"],
-      "discovery_hint": "DEFAULT skill for single-stock news-LISTING questions. Trigger when (a) request contains an info noun: news, article, announcement, notice, research report, headline, update, 新闻, 消息, 最新消息, 最近消息, 公告, 资讯, 文章, 研报; OR (b) request is a question-form news query like '特斯拉最近有什么新闻？', 'NVDA 有没有新闻？', '最近什么消息？', 'what news on X', 'any news on X', 'latest news on X'. DO NOT trigger on bare single-stock mentions with no news keyword/question. DO NOT trigger on interpret/digest/analyze/summarize requests (→ moomoo-stock-digest). DO NOT trigger on sentiment / 看多看空 / 风向 (→ moomoo-comment-sentiment). Lists only; never interprets."
+      "description": "Moomoo single-stock news/article/announcement/research retrieval — list only, no interpretation",
+      "keywords": ["moomoo", "news", "search", "article", "announcement", "notice", "research", "headlines", "update"],
+      "discovery_hint": "Trigger when the user wants a list of news / articles / announcements / research reports (title + time + link) for a specific stock or company, and the message contains both a stock target and an explicit news-intent keyword (news / article / announcement / notice / research report / headline / update). Retrieval only — no interpretation or summarization. Typical must-trigger examples: 'what's the latest news on Tesla', 'any recent Apple announcements', 'NVDA latest news', 'what news about Apple'. SKIP: bare stock mention with no news keyword; user explicitly asks to interpret / analyze / summarize / digest (→ moomoo-stock-digest); community sentiment / bullish-bearish mood (→ moomoo-comment-sentiment)."
     },
     {
       "slug": "moomoo-stock-digest",
       "name": "moomoo-stock-digest",
       "product": "moomoo",
       "category": "search",
-      "description": "Interpret / summarize / digest the latest news for ONE stock and produce a directional read (interpretation-only; NOT a raw news list, NOT community sentiment)",
-      "keywords": ["moomoo", "digest", "interpret", "interpretation", "summary", "summarize", "analyze", "analysis", "解读", "点评", "分析", "总结", "摘要", "概要"],
-      "discovery_hint": "Trigger ONLY when the request explicitly contains an interpret/summary VERB — digest, interpret, summarize, summary, analyze, analysis, what does this mean, 解读, 点评, 分析, 总结, 摘要. DO NOT trigger on bare single-stock mentions. DO NOT trigger on plain news-listing questions like '有什么新闻 / 有没有新闻 / 最近什么新闻 / 最近发生了什么 / what news / any news / latest news / recent news / what's happening with X' — those go to moomoo-news-search. DO NOT trigger on sentiment / 看多看空 / 风向 questions (→ moomoo-comment-sentiment)."
+      "description": "Moomoo single-stock news interpretation / digest — analysis & summary, not a raw list",
+      "keywords": ["moomoo", "digest", "summary", "interpret", "analyze", "summarize", "impact", "bullish", "bearish"],
+      "discovery_hint": "Trigger ONLY when the user uses an explicit interpretation verb — interpret / analyze / summarize / digest / what does this mean / what's the impact / bullish or bearish takeaway — directed at a single stock's news or announcements. Typical must-trigger examples: 'interpret Tesla's latest news for me', 'analyze NVDA's recent news flow', 'summarize Apple's recent announcements'. Hard rule: presence of news-intent nouns alone (news / announcement / update) is NOT enough — an interpretation verb must also be present. SKIP: user only wants to list / retrieve raw news like 'NVDA latest news' or 'what news about Apple' (→ moomoo-news-search); community sentiment / bullish-bearish mood (→ moomoo-comment-sentiment); price/quote checks, anomaly tracking, K-line, holdings, or trade execution; multiple stocks for batch analysis."
     },
     {
       "slug": "moomoo-comment-sentiment",
       "name": "moomoo-comment-sentiment",
       "product": "moomoo",
       "category": "search",
-      "description": "Judge bullish vs bearish SENTIMENT for a stock from moomoo community discussions (sentiment-only, not news listing, not news interpretation)",
-      "keywords": ["moomoo", "sentiment", "bullish", "bearish", "mood", "情绪", "看多", "看空", "舆情", "风向", "社区情绪", "讨论", "评论"],
-      "discovery_hint": "User explicitly asks about SENTIMENT / mood / community opinion / market wind for a stock — request must contain a sentiment-style keyword (sentiment, bullish, bearish, 看多, 看空, 情绪, 社区情绪, 舆情, 风向, 散户怎么看, community mood, retail tone, discussion tone). DO NOT trigger on a bare single-stock mention with no such keyword. DO NOT trigger on news LISTING requests (that's moomoo-news-search). DO NOT trigger on news INTERPRETATION / digest requests (that's moomoo-stock-digest). Sentiment is derived from community posts, not news."
+      "description": "Moomoo community sentiment — bullish/bearish mood from posts & comments",
+      "keywords": ["moomoo", "sentiment", "bullish", "bearish", "mood", "community", "retail", "discussion"],
+      "discovery_hint": "Trigger when the user wants to judge or analyze the bullish vs bearish sentiment / mood / community opinion / discussion tone for one or more stocks. The signal here is community posts and comments, not news, not price action. Typical triggers: 'what's the community sentiment on TSLA', 'is retail bullish or bearish on NVDA', 'what are people saying about Apple'. SKIP: user wants a news list (→ moomoo-news-search); user wants news interpretation or impact analysis (→ moomoo-stock-digest); price/quote checks, anomaly tracking, K-line, holdings, or trade execution."
     },
     {
       "slug": "moomooapi",
       "name": "moomooapi",
       "product": "moomoo",
       "description": "Moomoo OpenAPI quotes and trading",
-      "keywords": ["moomoo", "openapi", "quote", "trade", "行情", "交易"],
-      "discovery_hint": "User mentions quotes, prices, K-line, order book, trading, positions, account, options, or other OpenAPI features"
+      "keywords": ["moomoo", "openapi", "quote", "trade", "price", "order", "position", "account"],
+      "discovery_hint": "Trigger when the user mentions quotes, prices, K-line, snapshots, order book, trading, positions, account balance, options, placing or canceling orders, stock screening, or other OpenAPI market-data and trading features."
     },
     {
       "slug": "install-moomoo-opend",
       "name": "install-moomoo-opend",
       "product": "moomoo",
       "description": "Install / upgrade Moomoo OpenD and Python SDK",
-      "keywords": ["opend", "sdk", "install", "安装"],
-      "discovery_hint": "User mentions installing, downloading, launching, configuring OpenD or upgrading moomoo SDK"
+      "keywords": ["opend", "sdk", "install", "upgrade", "download", "setup"],
+      "discovery_hint": "Trigger when the user mentions installing, downloading, launching, running, configuring OpenD, or upgrading the moomoo SDK."
     },
     {
       "slug": "moomoo-capital-anomaly",
@@ -50,8 +50,8 @@
       "product": "moomoo",
       "category": "anomaly",
       "description": "Moomoo capital-flow anomaly detection",
-      "keywords": ["moomoo", "capital", "anomaly", "fund flow", "short sell"],
-      "discovery_hint": "User asks about capital flow, institutional activity, large/small orders, who is buying/selling, broker trades, short selling, or gives a broad anomaly request like 'NVDA anomaly'"
+      "keywords": ["moomoo", "capital", "anomaly", "fund flow", "institutional", "short sell", "large order"],
+      "discovery_hint": "Trigger when the user asks about capital flow, institutional activity, large/small orders, who is buying or selling, broker activity, short selling, or gives a broad anomaly request like 'NVDA anomaly' or 'what's moving TSLA'."
     },
     {
       "slug": "moomoo-derivatives-anomaly",
@@ -59,8 +59,8 @@
       "product": "moomoo",
       "category": "anomaly",
       "description": "Moomoo derivatives anomaly detection",
-      "keywords": ["moomoo", "derivatives", "anomaly", "options", "warrants"],
-      "discovery_hint": "User asks about options, derivatives, warrants, IV, implied volatility, PCR, unusual option activity, put/call sentiment, or gives a broad anomaly request like 'TSLA anomaly'"
+      "keywords": ["moomoo", "derivatives", "anomaly", "options", "warrants", "IV", "PCR", "volatility"],
+      "discovery_hint": "Trigger when the user asks about options, derivatives, warrants, IV, implied volatility, PCR, unusual option activity, put/call sentiment, volatility premium, or gives a broad anomaly request like 'TSLA anomaly'."
     },
     {
       "slug": "moomoo-technical-anomaly",
@@ -68,8 +68,8 @@
       "product": "moomoo",
       "category": "anomaly",
       "description": "Moomoo technical-analysis anomaly detection",
-      "keywords": ["moomoo", "technical", "anomaly", "K-line", "MACD", "RSI"],
-      "discovery_hint": "User asks about technical signals, K-line patterns, golden/death cross, overbought/oversold, MACD, RSI, KDJ, CCI, or gives a broad anomaly request like 'AAPL any anomalies'"
+      "keywords": ["moomoo", "technical", "anomaly", "K-line", "MACD", "RSI", "KDJ", "golden cross", "overbought"],
+      "discovery_hint": "Trigger when the user asks about technical signals, K-line patterns, golden/death cross, overbought/oversold, MACD, RSI, KDJ, or other technical indicator anomalies, or gives a broad anomaly request like 'AAPL any anomalies'."
     }
   ]
 }
