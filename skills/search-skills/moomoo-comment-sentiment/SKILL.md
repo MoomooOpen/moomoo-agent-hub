@@ -6,21 +6,12 @@ description: >-
   user-specified symbols, filtering low-quality posts, classifying each post as
   bullish / bearish / neutral, and returning a structured community sentiment
   snapshot (single stock or multi-symbol portfolio).
-  TRIGGER when the user asks about: 情绪 / 社区情绪 / 散户情绪 / 看多看空 /
-  多空情绪 / 牛熊 / 看涨看跌 / 风向 / 讨论氛围 / 评论怎么看 / 大家怎么看 /
-  bullish or bearish / sentiment / community mood / retail discussion tone /
-  portfolio sentiment snapshot. The signal here is community POSTS / COMMENTS,
-  not news, not price action.
-  SKIP in any of the following cases:
-  - the user wants a list of news / articles / announcements / research reports
-    (title + time + link) — that belongs to `moomoo-news-search`.
-  - the user wants news / 消息面 interpretation, summarization, impact analysis,
-    or 多空研判 based on news rather than community posts — that belongs to
-    `moomoo-stock-digest`.
-  - price/quote checks, 异动 / anomaly tracking, K线 / technical analysis,
-    holdings, or trade execution — none of these are sentiment requests.
-  A bare ticker or company name without a sentiment-intent keyword is NOT enough
-  to trigger this skill.
+  TRIGGER when: 情绪 / 社区情绪 / 散户情绪 / 看多看空 / 多空情绪 / 牛熊 /
+  看涨看跌 / 风向 / 讨论氛围 / 评论怎么看 / 大家怎么看 / bullish or bearish /
+  sentiment / community mood / retail discussion tone.
+  SKIP: news listing → moomoo-news-search; news interpretation/分析/研判 →
+  moomoo-stock-digest; price/quote/K线/异动/trade. Bare ticker without
+  sentiment keyword does NOT trigger.
 metadata:
   version: 0.0.2
   author: moomoo
