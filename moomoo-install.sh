@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Moomoo Skills Hub CLI — one-line installer (deploys CLI under ~/.moomoo-skillhub, adds ~/.local/bin to PATH).
+# Patched: validates Python actually runs (avoids Windows Store stub) and supports `py -3` launcher.
 # Usage:
 #   curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/moomoo-install.sh" | bash
 #   ./moomoo-install.sh
@@ -18,6 +19,32 @@ CLI_DEST="${HUB_HOME}/moomoo-skill-manager"
 BIN_DIR="${HOME}/.local/bin"
 WRAPPER="${BIN_DIR}/moomoo-skills"
 
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+# Validate a candidate by actually running --version. Rejects the Windows Store
+# stub `python3.exe` which exits non-zero with no stdout (or pops the Store).
+validate_python() {
+  local cand="$1"
+  local ver
+  ver="$(${cand} --version 2>&1)" || return 1
+  [[ "${ver}" == Python\ 3* ]] || return 1
+  return 0
+}
+
+PYTHON=""
+for cand in "python3" "py -3" "python"; do
+  if validate_python "${cand}"; then
+    PYTHON="${cand}"
+    break
+  fi
+done
+[[ -n "${PYTHON}" ]] || die "Python 3 is required (install Python 3 and ensure 'python3', 'py -3', or 'python' resolves to it)"
+
+echo "Using Python: ${PYTHON} ($(${PYTHON} --version 2>&1))"
+
 # Resolve remote repo: env override > cli_update_manifest.json > hardcoded fallback.
 FALLBACK_REPO_URL="https://github.com/MoomooOpen/moomoo-agent-hub"
 FALLBACK_REPO_REF="feature/v20260512-add-skills"
@@ -30,22 +57,15 @@ if [[ -z "${REMOTE_REPO_URL}" || -z "${REMOTE_REPO_REF}" || -z "${REMOTE_REPO_PA
   if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
     MANIFEST="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/moomoo-skill-manager/cli_update_manifest.json"
   fi
-  if [[ -f "${MANIFEST:-}" ]] && command -v python3 >/dev/null 2>&1; then
-    REMOTE_REPO_URL="${REMOTE_REPO_URL:-$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('cli_repo_url',''))" "${MANIFEST}" 2>/dev/null || echo "")}"
-    REMOTE_REPO_REF="${REMOTE_REPO_REF:-$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('cli_repo_ref',''))" "${MANIFEST}" 2>/dev/null || echo "")}"
-    REMOTE_REPO_PATH="${REMOTE_REPO_PATH:-$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('cli_repo_path',''))" "${MANIFEST}" 2>/dev/null || echo "")}"
+  if [[ -f "${MANIFEST:-}" ]]; then
+    REMOTE_REPO_URL="${REMOTE_REPO_URL:-$(${PYTHON} -c "import json,sys;print(json.load(open(sys.argv[1])).get('cli_repo_url',''))" "${MANIFEST}" 2>/dev/null || echo "")}"
+    REMOTE_REPO_REF="${REMOTE_REPO_REF:-$(${PYTHON} -c "import json,sys;print(json.load(open(sys.argv[1])).get('cli_repo_ref',''))" "${MANIFEST}" 2>/dev/null || echo "")}"
+    REMOTE_REPO_PATH="${REMOTE_REPO_PATH:-$(${PYTHON} -c "import json,sys;print(json.load(open(sys.argv[1])).get('cli_repo_path',''))" "${MANIFEST}" 2>/dev/null || echo "")}"
   fi
 fi
 REMOTE_REPO_URL="${REMOTE_REPO_URL:-${FALLBACK_REPO_URL}}"
 REMOTE_REPO_REF="${REMOTE_REPO_REF:-${FALLBACK_REPO_REF}}"
 REMOTE_REPO_PATH="${REMOTE_REPO_PATH:-${FALLBACK_REPO_PATH}}"
-
-die() {
-  echo "error: $*" >&2
-  exit 1
-}
-
-command -v python3 >/dev/null 2>&1 || die "python3 is required"
 
 SCRIPT_PATH=""
 if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
@@ -94,14 +114,14 @@ else
   die "Set MOOMOO_SKILLHUB_REPO_URL to the CLI git repo, or run this script from the moomoo-skills-hub repo root."
 fi
 
-cat > "${WRAPPER}" <<'EOF'
+cat > "${WRAPPER}" <<EOF
 #!/usr/bin/env bash
-exec python3 "${HOME}/.moomoo-skillhub/moomoo-skill-manager/moomoo_skills.py" "$@"
+exec ${PYTHON} "\${HOME}/.moomoo-skillhub/moomoo-skill-manager/moomoo_skills.py" "\$@"
 EOF
 chmod +x "${WRAPPER}"
 
-if python3 "${CLI_DEST}/moomoo_skills.py" --version >/dev/null 2>&1; then
-  echo "Smoke test OK: $(python3 "${CLI_DEST}/moomoo_skills.py" --version)"
+if ${PYTHON} "${CLI_DEST}/moomoo_skills.py" --version >/dev/null 2>&1; then
+  echo "Smoke test OK: $(${PYTHON} "${CLI_DEST}/moomoo_skills.py" --version)"
 else
   die "CLI smoke test failed"
 fi
