@@ -21,7 +21,7 @@ Embed the version check into the skill's **single Bash call**. **Do not create a
 Start the check as a backgrounded subprocess **before** the business command, then append `wait` **after** the business command to collect the result, all in one invocation:
 
 ```bash
-( if command -v moomoo-skills >/dev/null 2>&1; then moomoo-skills check --quiet 2>/dev/null | grep -E '^(cli|moomooapi)'; else echo '__CLI_MISSING__'; fi ) > /tmp/.moomooapi-update 2>/dev/null & python3 -c '...'; wait; cat /tmp/.moomooapi-update 2>/dev/null; rm -f /tmp/.moomooapi-update
+( if command -v moomoo-skills >/dev/null 2>&1; then moomoo-skills check --quiet --filter cli --filter moomooapi 2>/dev/null; else echo '__CLI_MISSING__'; fi ) > /tmp/.moomooapi-update 2>/dev/null & python3 -c '...'; wait; cat /tmp/.moomooapi-update 2>/dev/null; rm -f /tmp/.moomooapi-update
 ```
 
 Based on the `cat` output:
@@ -66,7 +66,7 @@ This skill depends on moomoo **OpenD** (default `127.0.0.1:11111`) to fetch mark
 Silently probe OpenD reachability before any market-data or trading workflow. **Do not announce this step to the user.**
 
 ```bash
-nc -z 127.0.0.1 11111 && echo ok || echo not-running
+moomoo-skills check-opend
 ```
 
 Behavior:

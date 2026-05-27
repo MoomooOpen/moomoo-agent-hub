@@ -1168,7 +1168,7 @@ _VC_EN = (
     "\n"
     "```bash\n"
     "( if command -v {cli} >/dev/null 2>&1; then "
-    "{cli} check --quiet 2>/dev/null | grep -E '^(cli|{slug})'; "
+    "{cli} check --quiet --filter cli --filter {slug} 2>/dev/null; "
     "else echo '__CLI_MISSING__'; fi ) "
     "> /tmp/.{slug}-update 2>/dev/null & "
     "curl -sG '...' ...; "
@@ -1236,7 +1236,7 @@ _VC_ZH = (
     "\n"
     "```bash\n"
     "( if command -v {cli} >/dev/null 2>&1; then "
-    "{cli} check --quiet 2>/dev/null | grep -E '^(cli|{slug})'; "
+    "{cli} check --quiet --filter cli --filter {slug} 2>/dev/null; "
     "else echo '__CLI_MISSING__'; fi ) "
     "> /tmp/.{slug}-update 2>/dev/null & "
     "curl -sG '...' ...; "
@@ -1858,6 +1858,25 @@ def cmd_detect(args: argparse.Namespace) -> None:
         print(path)
 
 
+def cmd_check_opend(args: argparse.Namespace) -> None:
+    """Check if OpenD is reachable on the configured host:port."""
+    import socket
+
+    host = args.host or os.environ.get("MOOMOO_OPEND_HOST", "127.0.0.1")
+    port = args.port or int(os.environ.get("MOOMOO_OPEND_PORT", "11111"))
+    timeout = args.timeout
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        s.connect((host, port))
+        s.close()
+        print("ok")
+    except (OSError, socket.timeout):
+        print("not-running")
+        raise SystemExit(1)
+
+
 def cmd_refresh_discovery(args: argparse.Namespace) -> None:
     """Regenerate the discovery SKILL.md based on current install state."""
     install_root = Path(args.dir).expanduser().resolve()
@@ -1884,9 +1903,12 @@ def cmd_check(args: argparse.Namespace) -> None:
     if args.quiet:
         if not r["outdated"]:
             return
-        if r["cli"]["outdated"]:
+        check_filter = set(args.filter) if args.filter else None
+        if r["cli"]["outdated"] and (not check_filter or "cli" in check_filter):
             print(f"cli\t{r['cli']['local']}\t{r['cli']['remote']}")
         for s in r["skills"]:
+            if check_filter and s["slug"] not in check_filter:
+                continue
             if s["status"] == "update_available":
                 print(f"{s['slug']}\t{s['local']}\t{s['remote']}")
             elif s["status"] in ("deprecated_remove", "deprecated_migrate"):
@@ -2116,6 +2138,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SEC",
         help="HTTP timeout for manifest and catalog (default: 8)",
     )
+    chk.add_argument(
+        "--filter",
+        action="append",
+        metavar="NAME",
+        help="with --quiet, only show updates for these names (repeatable; use 'cli' for the manager itself)",
+    )
     chk.set_defaults(func=cmd_check)
 
     rd = sub.add_parser(
@@ -2124,6 +2152,15 @@ def build_parser() -> argparse.ArgumentParser:
         parents=[common],
     )
     rd.set_defaults(func=cmd_refresh_discovery)
+
+    co = sub.add_parser(
+        "check-opend",
+        help="check if OpenD is reachable (cross-platform, exits 0=ok, 1=not running)",
+    )
+    co.add_argument("--host", default=None, help="OpenD host (default: $MOOMOO_OPEND_HOST or 127.0.0.1)")
+    co.add_argument("--port", type=int, default=None, help="OpenD port (default: $MOOMOO_OPEND_PORT or 11111)")
+    co.add_argument("--timeout", type=float, default=2.0, help="connection timeout in seconds (default: 2)")
+    co.set_defaults(func=cmd_check_opend)
 
     return p
 
