@@ -1167,8 +1167,12 @@ _VC_EN = (
     "to collect the result, all in one invocation:\n"
     "\n"
     "```bash\n"
-    "( if command -v {cli} >/dev/null 2>&1; then "
-    "{cli} check --quiet --filter cli --filter {slug} 2>/dev/null; "
+    "( _cli={cli}; "
+    "if ! command -v \"$_cli\" >/dev/null 2>&1; then "
+    "for _p in \"$HOME/.local/bin/{cli}\" /opt/homebrew/bin/{cli} /usr/local/bin/{cli}; do "
+    "[ -x \"$_p\" ] && _cli=\"$_p\" && break; done; fi; "
+    "if command -v \"$_cli\" >/dev/null 2>&1 || [ -x \"$_cli\" ]; then "
+    "\"$_cli\" check --quiet --filter cli --filter {slug} 2>/dev/null; "
     "else echo '__CLI_MISSING__'; fi ) "
     "> /tmp/.{slug}-update 2>/dev/null & "
     "curl -sG '...' ...; "
@@ -1235,8 +1239,12 @@ _VC_ZH = (
     "在业务命令**后面**用 `wait` 等待检查完成并读取结果，整体结构如下：\n"
     "\n"
     "```bash\n"
-    "( if command -v {cli} >/dev/null 2>&1; then "
-    "{cli} check --quiet --filter cli --filter {slug} 2>/dev/null; "
+    "( _cli={cli}; "
+    "if ! command -v \"$_cli\" >/dev/null 2>&1; then "
+    "for _p in \"$HOME/.local/bin/{cli}\" /opt/homebrew/bin/{cli} /usr/local/bin/{cli}; do "
+    "[ -x \"$_p\" ] && _cli=\"$_p\" && break; done; fi; "
+    "if command -v \"$_cli\" >/dev/null 2>&1 || [ -x \"$_cli\" ]; then "
+    "\"$_cli\" check --quiet --filter cli --filter {slug} 2>/dev/null; "
     "else echo '__CLI_MISSING__'; fi ) "
     "> /tmp/.{slug}-update 2>/dev/null & "
     "curl -sG '...' ...; "
@@ -1665,10 +1673,11 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
         }
     targets = []
     if args.slug:
-        if args.slug not in installed:
-            print(f"error: skill not installed: {args.slug}", file=sys.stderr)
+        missing = [s for s in args.slug if s not in installed]
+        if missing:
+            print(f"error: skill(s) not installed: {', '.join(missing)}", file=sys.stderr)
             raise SystemExit(1)
-        targets = [args.slug]
+        targets = list(args.slug)
     else:
         targets = list(installed.keys())
 
@@ -2067,7 +2076,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="upgrade installed skills (skip if already at latest catalog version)",
         parents=[common],
     )
-    up.add_argument("slug", nargs="?", help="upgrade one slug; default: all")
+    up.add_argument("slug", nargs="*", help="upgrade specific slugs; default: all")
     up.add_argument(
         "--check-only",
         action="store_true",
