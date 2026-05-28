@@ -146,6 +146,12 @@ def detect_ai_client() -> Tuple[Optional[str], Optional[Path]]:
     return None, None
 
 
+def _agents_store_dir() -> Optional[Path]:
+    """Return ~/.agents/skills/ if it exists (npx skills central store)."""
+    d = Path.home() / ".agents" / "skills"
+    return d if d.is_dir() else None
+
+
 def resolve_skills_dir() -> Tuple[str, str]:
     """
     Resolve default skills install root.
@@ -1382,15 +1388,40 @@ def _git_ensure_repo(url: str, ref: str, *, force_refresh: bool) -> Path:
     return target
 
 
-def _try_npx_skills_add(slug: str, dest_skill: Path) -> bool:
-    """Try `npx skills add <slug> --dir <parent>`. Returns True iff dest_skill now exists."""
+def _try_npx_skills_update(slug: str, dest_skill: Path) -> bool:
+    """Try `npx skills update <slug> -g -y`. Returns True iff dest_skill is up-to-date."""
     if shutil.which("npx") is None:
+        return False
+    store = _agents_store_dir()
+    if not store or not (store / slug).is_dir():
         return False
     try:
         proc = subprocess.run(
-            ["npx", "-y", "skills", "add", slug, "--dir", str(dest_skill.parent)],
+            ["npx", "-y", "skills", "update", slug, "-g", "-y"],
             capture_output=True, timeout=180,
         )
+        if proc.returncode != 0:
+            verbose(f"npx skills update {slug} exited {proc.returncode}: "
+                    f"{proc.stderr.decode(errors='ignore').strip()}")
+            return False
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        verbose(f"npx skills update {slug} failed: {e}")
+        return False
+    return (store / slug).is_dir()
+
+
+def _try_npx_skills_add(slug: str, dest_skill: Path, *, repo_url: str = "", repo_ref: str = "") -> bool:
+    """Try `npx skills add` with git source for initial install. Returns True iff dest_skill now exists."""
+    if shutil.which("npx") is None:
+        return False
+    if repo_url:
+        src = _npx_skills_source(repo_url)
+        source_arg = f"{src}#{repo_ref}" if repo_ref and repo_ref != "main" else src
+        cmd = ["npx", "-y", "skills", "add", "-y", "-g", source_arg, "--skill", slug]
+    else:
+        cmd = ["npx", "-y", "skills", "add", slug, "-g", "-y"]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, timeout=180)
         if proc.returncode != 0:
             verbose(f"npx skills add {slug} exited {proc.returncode}: "
                     f"{proc.stderr.decode(errors='ignore').strip()}")
@@ -1398,7 +1429,30 @@ def _try_npx_skills_add(slug: str, dest_skill: Path) -> bool:
     except (FileNotFoundError, subprocess.TimeoutExpired) as e:
         verbose(f"npx skills add {slug} failed: {e}")
         return False
+    store = _agents_store_dir()
+    if store and (store / slug).is_dir():
+        return True
     return dest_skill.is_dir()
+
+
+def _link_or_copy(target: Path, link: Path) -> None:
+    """Create a symlink (or junction on Windows) from *link* to *target*."""
+    rel = os.path.relpath(target, link.parent)
+    try:
+        os.symlink(rel, link, target_is_directory=True)
+        return
+    except OSError:
+        pass
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                check=True, capture_output=True, timeout=10,
+            )
+            return
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+    shutil.copytree(target, link, ignore=shutil.ignore_patterns(".git"))
 
 
 def install_from_source(
@@ -1410,18 +1464,21 @@ def install_from_source(
     force_refresh: bool,
 ) -> None:
     """
-    Install a skill from its git repo.
+    Install or upgrade a skill from its git repo.
 
-    Strategy: prefer `npx skills add` when available; otherwise clone the repo
-    declared in metadata.repo_url and locate the skill directory by convention:
-    a directory named `<slug>` containing `SKILL.md`. If the repo root itself
-    matches (single-skill repo), use the repo root.
+    Strategy:
+      1. If skill already exists in store, try `npx skills update`.
+      2. Otherwise try `npx skills add -g` with repo source.
+      3. Fallback: git clone + copy to store (or platform dir if no store).
     """
-    if _try_npx_skills_add(slug, dest_skill):
-        return
-
     url = resolve_repo_url(meta, entry)
     ref = resolve_repo_ref(meta, entry)
+
+    if _try_npx_skills_update(slug, dest_skill):
+        return
+    if _try_npx_skills_add(slug, dest_skill, repo_url=url, repo_ref=ref):
+        return
+
     repo = _git_ensure_repo(url, ref, force_refresh=force_refresh)
 
     src = _locate_skill_dir(repo, slug)
@@ -1434,9 +1491,19 @@ def install_from_source(
         )
         raise SystemExit(3)
 
-    _remove_skill_path(dest_skill)
-    dest_skill.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(src, dest_skill, ignore=shutil.ignore_patterns(".git"))
+    store = _agents_store_dir()
+    if store:
+        store_dest = store / slug
+        _remove_skill_path(store_dest)
+        store_dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(src, store_dest, ignore=shutil.ignore_patterns(".git"))
+        _remove_skill_path(dest_skill)
+        dest_skill.parent.mkdir(parents=True, exist_ok=True)
+        _link_or_copy(store_dest, dest_skill)
+    else:
+        _remove_skill_path(dest_skill)
+        dest_skill.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(src, dest_skill, ignore=shutil.ignore_patterns(".git"))
 
 
 def _locate_skill_dir(repo: Path, slug: str) -> Optional[Path]:
@@ -1461,21 +1528,9 @@ def _locate_skill_dir(repo: Path, slug: str) -> Optional[Path]:
 def _remove_skill_path(dest: Path) -> bool:
     """Remove *dest* whether it's a directory, file, or (possibly broken) symlink.
 
-    Returns True if anything was removed. ``Path.is_dir()`` returns False for
-    broken symlinks, so callers that only checked ``is_dir()`` would silently
-    leave dangling links behind and later trip ``shutil.copytree`` on reinstall.
-
-    On Windows, ``npx skills add`` creates NTFS junctions which
-    ``Path.is_symlink()`` may not detect (Python < 3.12).  We handle them
-    via ``Path.is_junction()`` (3.12+) or by catching the OSError from rmtree.
+    Returns True if anything was removed.
     """
-    if dest.is_symlink() or dest.is_file():
-        try:
-            dest.unlink()
-            return True
-        except FileNotFoundError:
-            return False
-    if hasattr(dest, "is_junction") and dest.is_junction():
+    if dest.is_symlink() or os.path.islink(dest) or dest.is_file():
         try:
             dest.unlink()
             return True
@@ -1484,27 +1539,62 @@ def _remove_skill_path(dest: Path) -> bool:
     if dest.is_dir():
         try:
             shutil.rmtree(dest)
-        except OSError:
-            # Windows NTFS junction: rmtree refuses but unlink works
-            dest.unlink()
+        except OSError as e:
+            if "symbolic" in str(e).lower() or "junction" in str(e).lower():
+                dest.unlink()
+            else:
+                raise
         return True
     return False
 
 
+def _try_npx_skills_remove(slugs: List[str]) -> bool:
+    """Try `npx skills remove <slugs> -g -y`. Returns True on success."""
+    if shutil.which("npx") is None:
+        return False
+    try:
+        proc = subprocess.run(
+            ["npx", "-y", "skills", "remove"] + slugs + ["-g", "-y"],
+            capture_output=True, timeout=180,
+        )
+        if proc.returncode != 0:
+            verbose(f"npx skills remove exited {proc.returncode}: "
+                    f"{proc.stderr.decode(errors='ignore').strip()}")
+            return False
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        verbose(f"npx skills remove failed: {e}")
+        return False
+    return True
+
+
 def cmd_uninstall(args: argparse.Namespace) -> None:
     meta, skills = load_index()
-    slug = args.slug
-    if not get_skill_entry(skills, slug):
-        print(f"warning: slug {slug!r} not in index (continuing)", file=sys.stderr)
     install_root = Path(args.dir).expanduser().resolve()
-    dest = install_root / slug
-    if _remove_skill_path(dest):
-        print(f"removed {dest}")
+    slugs = args.slug if isinstance(args.slug, list) else [args.slug]
+
+    if _try_npx_skills_remove(slugs):
+        for slug in slugs:
+            print(f"removed {slug}")
     else:
-        print(f"not found (skipped): {dest}")
+        for slug in slugs:
+            if not get_skill_entry(skills, slug):
+                print(f"warning: slug {slug!r} not in index (continuing)", file=sys.stderr)
+            dest = install_root / slug
+            if dest.is_symlink() or os.path.islink(dest):
+                dest.unlink()
+                print(f"unlinked {dest}")
+            elif _remove_skill_path(dest):
+                print(f"removed {dest}")
+            else:
+                print(f"not found (skipped): {dest}")
+
     lock = read_lock(install_root, meta)
-    if slug in lock.get("skills", {}):
-        del lock["skills"][slug]
+    lock_changed = False
+    for slug in slugs:
+        if slug in lock.get("skills", {}):
+            del lock["skills"][slug]
+            lock_changed = True
+    if lock_changed:
         write_lock(install_root, meta, lock)
     _refresh_discovery_skill(install_root, meta, skills)
     _cleanup_guard_skill(install_root)
@@ -1673,10 +1763,6 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
         }
     targets = []
     if args.slug:
-        missing = [s for s in args.slug if s not in installed]
-        if missing:
-            print(f"error: skill(s) not installed: {', '.join(missing)}", file=sys.stderr)
-            raise SystemExit(1)
         targets = list(args.slug)
     else:
         targets = list(installed.keys())
@@ -2096,12 +2182,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     up.set_defaults(func=cmd_upgrade)
 
-    un = sub.add_parser(
-        "uninstall",
-        help="remove an installed skill",
+    ins = sub.add_parser(
+        "install",
+        help="install one or more skills (alias for upgrade --force)",
         parents=[common],
     )
-    un.add_argument("slug")
+    ins.add_argument("slug", nargs="+", help="one or more slugs to install")
+    ins.add_argument(
+        "--timeout",
+        type=int,
+        default=10,
+        metavar="SEC",
+        help="HTTP timeout for catalog fetch (default: 10)",
+    )
+    ins.set_defaults(func=cmd_upgrade, check_only=False, force=True)
+
+    un = sub.add_parser(
+        "uninstall",
+        help="remove one or more installed skills",
+        parents=[common],
+    )
+    un.add_argument("slug", nargs="+", help="one or more slugs to uninstall")
     un.set_defaults(func=cmd_uninstall)
 
     su = sub.add_parser(
