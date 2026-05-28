@@ -1046,12 +1046,12 @@ def _refresh_discovery_skill(
     lines.append("You MUST first list every matching skill (slug + brief description), then ask the user which to install. For example:")
     lines.append("")
     lines.append("> Your request matches multiple installable skills: `a`, `b`, `c`.")
-    lines.append("> Reply with `--skill a` to install one, `--skill a,b` to install multiple (comma-separated, no spaces),")
+    lines.append("> Reply with `--skill a` to install one, `--skill a b` to install multiple (space-separated),")
     lines.append("> or `--skill all` to install every match.")
     lines.append("")
     lines.append("Parse the `--skill` argument in the user's reply:")
     lines.append("- `--skill <slug>`: install only that single slug.")
-    lines.append("- `--skill <slug1>,<slug2>,...`: install only the slugs explicitly listed in the comma-separated list.")
+    lines.append("- `--skill <slug1> <slug2> ...`: install only the slugs explicitly listed (space-separated).")
     lines.append("- `--skill all`: install every match (only when the user explicitly says so).")
     lines.append("- No `--skill` provided or no explicit confirmation → **do NOT install any skill**; ask again.")
     lines.append("")
@@ -1456,6 +1456,10 @@ def _remove_skill_path(dest: Path) -> bool:
     Returns True if anything was removed. ``Path.is_dir()`` returns False for
     broken symlinks, so callers that only checked ``is_dir()`` would silently
     leave dangling links behind and later trip ``shutil.copytree`` on reinstall.
+
+    On Windows, ``npx skills add`` creates NTFS junctions which
+    ``Path.is_symlink()`` may not detect (Python < 3.12).  We handle them
+    via ``Path.is_junction()`` (3.12+) or by catching the OSError from rmtree.
     """
     if dest.is_symlink() or dest.is_file():
         try:
@@ -1463,8 +1467,18 @@ def _remove_skill_path(dest: Path) -> bool:
             return True
         except FileNotFoundError:
             return False
+    if hasattr(dest, "is_junction") and dest.is_junction():
+        try:
+            dest.unlink()
+            return True
+        except FileNotFoundError:
+            return False
     if dest.is_dir():
-        shutil.rmtree(dest)
+        try:
+            shutil.rmtree(dest)
+        except OSError:
+            # Windows NTFS junction: rmtree refuses but unlink works
+            dest.unlink()
         return True
     return False
 
