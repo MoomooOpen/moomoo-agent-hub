@@ -950,7 +950,7 @@ def _refresh_discovery_skill(
     all_keywords: List[str] = []
     for s in uninstalled:
         all_keywords.extend(s.get("keywords") or [])
-    kw_str = " / ".join(dict.fromkeys(all_keywords))  # dedupe, preserve order
+    kw_str = ", ".join(dict.fromkeys(all_keywords))  # dedupe, preserve order
 
     # --- Build SKILL.md content ---
     hub_name = str(meta.get("hub_name") or "moomoo-skillhub")
@@ -975,7 +975,7 @@ def _refresh_discovery_skill(
         )
         suffix = "）. Do NOT skip to web search without checking here first."
         max_kw_len = 1024 - len(prefix) - len(suffix)
-        truncated_kw = kw_str[:max_kw_len].rsplit(" / ", 1)[0]
+        truncated_kw = kw_str[:max_kw_len].rsplit(", ", 1)[0]
         desc = f"{prefix}{truncated_kw}{suffix}"
     lines.append("description: >-")
     # Wrap description at ~78 chars for readability
