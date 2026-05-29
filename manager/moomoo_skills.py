@@ -547,6 +547,8 @@ def run_self_upgrade(
         script = os.path.abspath(sys.argv[0])
         new_argv = [sys.executable, script, *sys.argv[1:]]
         verbose(f"re-exec: {new_argv}")
+        if sys.platform == "win32":
+            raise SystemExit(subprocess.call(new_argv))
         os.execv(sys.executable, new_argv)
     return False
 
@@ -602,6 +604,8 @@ def maybe_startup_self_upgrade(argv: List[str]) -> bool:
     os.environ[ENV_SELF_UPGRADE_REEXEC] = "1"
     script = os.path.abspath(argv[0])
     new_argv = [sys.executable, script, *argv[1:]]
+    if sys.platform == "win32":
+        raise SystemExit(subprocess.call(new_argv))
     os.execv(sys.executable, new_argv)
     return True
 
@@ -1910,8 +1914,9 @@ def cmd_self_upgrade(args: argparse.Namespace) -> None:
         force_exec=True,
         force=args.force,
     )
-    # After manual self-upgrade, refresh discovery skill (index may have new skills)
-    if not args.check_only:
+    # After re-exec, main() STEP B already refreshed discovery with new code.
+    # Only refresh here for no-op cases (no update applied, process not replaced).
+    if not args.check_only and os.environ.get(ENV_SELF_UPGRADE_REEXEC) != "1":
         try:
             ir = Path(default_skills_dir()).expanduser().resolve()
             if ir.is_dir():
@@ -2263,7 +2268,9 @@ def main() -> None:
     ):
         try:
             maybe_startup_self_upgrade(sys.argv)
-        except (Exception, SystemExit) as e:
+        except SystemExit:
+            raise
+        except Exception as e:
             verbose(f"startup self-upgrade skipped: {e}")
 
     # After CLI self-upgrade re-exec, the index may contain new skills.
