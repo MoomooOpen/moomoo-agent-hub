@@ -1122,7 +1122,7 @@ _VC_MARKERS = ("## CLI: Version Update Check", "## CLI: 版本更新检查")
 
 _INSTALL_CMD = (
     "curl -fsSL \"https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub"
-    "/feature/v20260512-add-skills/moomoo-install.sh\" | bash"
+    "/main/moomoo-install.sh\" | bash"
 )
 
 _VC_EN = (

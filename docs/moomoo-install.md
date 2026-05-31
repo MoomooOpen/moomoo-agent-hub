@@ -21,7 +21,7 @@ Install moomoo Skills into your AI client in three steps.
 `moomoo-skills` manages skill versions and self-upgrades.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/moomoo-install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/main/moomoo-install.sh | bash
 ```
 
 Verify:
@@ -40,7 +40,7 @@ If `moomoo-skills` is not found, ensure `~/.local/bin` (or `/usr/local/bin`) is 
 Install search and anomaly-detection skills into your AI client's skills directory:
 
 ```bash
-npx skills add -y -g MoomooOpen/moomoo-agent-hub#feature/v20260512-add-skills
+npx skills add -y -g MoomooOpen/moomoo-agent-hub#main
 ```
 
 > `-y` skips interactive selection; `-g` installs globally (all projects). Drop `-y` to pick skills interactively, or `-g` to install only into the current project.
@@ -95,7 +95,7 @@ Some clients require a restart or a new chat session to pick up newly installed 
 - Confirm Node.js 18+: `node -v`
 - `command not found: skills` -> upgrade npm: `npm install -g npm@latest`
 - Private-repo clone failure -> ensure an SSH key or HTTPS credential helper is configured for `github.com`; verify with a manual `git clone`
-- Restricted network -> use HTTPS with a token: `npx skills add -y -g https://<token>@github.com/MoomooOpen/moomoo-agent-hub.git#feature/v20260512-add-skills`
+- Restricted network -> use HTTPS with a token: `npx skills add -y -g https://<token>@github.com/MoomooOpen/moomoo-agent-hub.git#main`
 
 </details>
 

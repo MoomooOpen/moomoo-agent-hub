@@ -14,7 +14,7 @@ description: >-
   multiple stocks; price/quote/K线/异动/trade. Hard rule: 新闻/消息/news alone
   NEVER triggers — interpretation verb MUST be present.
 metadata:
-  version: 0.0.2
+  version: 0.0.3
   author: moomoo
   requires:
     bins:
@@ -65,7 +65,7 @@ Based on the `cat` output:
 
   If the user agrees, first run:
   ```bash
-  curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/moomoo-install.sh" | bash
+  curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/main/moomoo-install.sh" | bash
   ```
   After install completes, run `moomoo-skills upgrade moomoo-stock-digest` to bring this skill to the latest version.
 - **Output containing a line starting with `moomoo-stock-digest`** (this skill has an update available): append a notice at the **end** of your reply:
@@ -225,7 +225,7 @@ Request example:
 
 ```bash
 curl -sG 'https://ai-news-search.moomoo.com/news_search' \
-  -H 'User-Agent: moomoo-stock-digest/0.0.2 (Skill)' \
+  -H 'User-Agent: moomoo-stock-digest/0.0.3 (Skill)' \
   --data-urlencode 'keyword=Tencent' \
   --data-urlencode 'size=10' \
   --data-urlencode 'news_type=1' \
@@ -450,4 +450,4 @@ Avoid:
 
 ## User Agent Header
 
-Include a `User-Agent` header with the following string: `moomoo-stock-digest/0.0.2 (Skill)`
+Include a `User-Agent` header with the following string: `moomoo-stock-digest/0.0.3 (Skill)`

@@ -56,7 +56,7 @@ Based on the `cat` output:
 
   If the user agrees, first run:
   ```bash
-  curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/moomoo-install.sh" | bash
+  curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/main/moomoo-install.sh" | bash
   ```
   After install completes, run `moomoo-skills upgrade moomoo-capital-anomaly` to bring this skill to the latest version.
 - **Output containing a line starting with `moomoo-capital-anomaly`** (this skill has an update available): append a notice at the **end** of your reply:

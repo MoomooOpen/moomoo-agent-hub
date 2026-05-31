@@ -2,7 +2,7 @@
 # Moomoo Skills Hub CLI — one-line installer (deploys CLI under ~/.moomoo-skillhub, adds ~/.local/bin to PATH).
 # Patched: validates Python actually runs (avoids Windows Store stub) and supports `py -3` launcher.
 # Usage:
-#   curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/moomoo-install.sh" | bash
+#   curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/main/moomoo-install.sh" | bash
 #   ./moomoo-install.sh
 #
 # Override remote git repo (takes precedence over cli_update_manifest.json):
@@ -47,7 +47,7 @@ echo "Using Python: ${PYTHON} ($(${PYTHON} --version 2>&1))"
 
 # Resolve remote repo: env override > cli_update_manifest.json > hardcoded fallback.
 FALLBACK_REPO_URL="https://github.com/MoomooOpen/moomoo-agent-hub"
-FALLBACK_REPO_REF="feature/v20260512-add-skills"
+FALLBACK_REPO_REF="main"
 FALLBACK_REPO_PATH="manager"
 REMOTE_REPO_URL="${MOOMOO_SKILLHUB_REPO_URL:-}"
 REMOTE_REPO_REF="${MOOMOO_SKILLHUB_REPO_REF:-}"

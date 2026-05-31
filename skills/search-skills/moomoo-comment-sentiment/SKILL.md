@@ -13,7 +13,7 @@ description: >-
   moomoo-stock-digest; price/quote/K线/异动/trade. Bare ticker without
   sentiment keyword does NOT trigger.
 metadata:
-  version: 0.0.2
+  version: 0.0.3
   author: moomoo
   requires:
     bins:
@@ -67,7 +67,7 @@ Based on the `cat` output:
 
   If the user agrees, first run:
   ```bash
-  curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/feature/v20260512-add-skills/moomoo-install.sh" | bash
+  curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/main/moomoo-install.sh" | bash
   ```
   After install completes, run `moomoo-skills upgrade moomoo-comment-sentiment` to bring this skill to the latest version.
 - **Output containing a line starting with `moomoo-comment-sentiment`** (this skill has an update available): append a notice at the **end** of your reply:
@@ -240,7 +240,7 @@ Typical request shape:
 
 ```bash
 curl -sG 'https://ai-news-search.moomoo.com/stock_feed' \
-  -H 'User-Agent: moomoo-comment-sentiment/0.0.2 (Skill)' \
+  -H 'User-Agent: moomoo-comment-sentiment/0.0.3 (Skill)' \
   --data-urlencode 'keyword=NVDA' \
   --data-urlencode 'size=30'
 ```
@@ -666,4 +666,4 @@ Only required when `mode=multi`.
 
 ## User Agent Header
 
-Include a `User-Agent` header with the following string: `moomoo-comment-sentiment/0.0.2 (Skill)`
+Include a `User-Agent` header with the following string: `moomoo-comment-sentiment/0.0.3 (Skill)`
