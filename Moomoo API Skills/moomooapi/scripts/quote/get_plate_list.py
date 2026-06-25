@@ -31,6 +31,9 @@ MARKET_MAP = {
     "US": Market.US,
     "SH": Market.SH,
     "SZ": Market.SZ,
+    "SG": Market.SG,
+    "MY": Market.MY,
+    "JP": Market.JP,
 }
 
 PLATE_CLASS_MAP = {
@@ -99,7 +102,7 @@ def get_plate_list(market="HK", plate_type="ALL", keyword=None, limit=50, output
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get plate list")
-    parser.add_argument("--market", choices=["HK", "US", "SH", "SZ"], default="HK", help="Market (default: HK)")
+    parser.add_argument("--market", choices=["HK", "US", "SH", "SZ", "SG", "MY", "JP"], default="HK", help="Market (default: HK; SG = Singapore, MY = Malaysia, JP = Japan — equities only)")
     parser.add_argument("--type", dest="plate_type", choices=["ALL", "INDUSTRY", "REGION", "CONCEPT", "OTHER"],
                         default="ALL", help="Plate type (default: ALL)")
     parser.add_argument("--keyword", "-k", default=None, help="Keyword to filter plate names")

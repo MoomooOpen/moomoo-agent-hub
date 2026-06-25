@@ -11,7 +11,7 @@ API Limits:
 - Max 200 results per page
 
 Parameter Notes:
-- --market: Market code (HK/US/SH/SZ). Does not distinguish between SH and SZ; passing either returns stocks from both markets
+- --market: Market code (HK/US/SH/SZ/JP/SG/MY). Does not distinguish between SH and SZ; passing either returns stocks from both markets. JP = Japan, SG = Singapore, MY = Malaysia — all equities only
 - --sort: Sort field (market_val/price/volume/turnover/turnover_rate/change_rate/pe/pb). Defaults to market_val descending
 - --asc: Sort ascending (default: descending)
 - --limit: Number of results (default: 20)
@@ -58,6 +58,9 @@ MARKET_MAP = {
     "US": Market.US,
     "SH": Market.SH,
     "SZ": Market.SZ,
+    "SG": Market.SG,
+    "MY": Market.MY,
+    "JP": Market.JP,
 }
 
 SORT_MAP = {
@@ -358,7 +361,7 @@ def get_stock_filter(market="HK", limit=20, sort=None, asc=False, output_json=Fa
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Stock Screener")
-    parser.add_argument("--market", choices=["HK", "US", "SH", "SZ"], default="HK", help="Market")
+    parser.add_argument("--market", choices=["HK", "US", "SH", "SZ", "SG", "MY", "JP"], default="HK", help="Market (SG = Singapore, MY = Malaysia, JP = Japan — all equities only)")
     parser.add_argument("--min-price", type=float, default=None)
     parser.add_argument("--max-price", type=float, default=None)
     parser.add_argument("--min-market-cap", type=float, default=None, help="Min market cap (in 100 millions)")

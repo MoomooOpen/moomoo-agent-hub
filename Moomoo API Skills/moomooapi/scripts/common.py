@@ -97,6 +97,8 @@ SKILL_VERSION = "0.1.1"
 STAMP_FILE = os.path.join(os.path.expanduser("~"), ".moomoo_skill_version")
 
 MIN_SDK_VERSION = "10.4.6408"
+# OpenCryptoTradeContext was introduced in 10.5.6508; crypto scripts require this version
+MIN_CRYPTO_SDK_VERSION = "10.5.6508"
 
 # ai_type parameter requires SDK >= MIN_SDK_VERSION; skip for older versions
 _sdk_supports_ai_type = True
@@ -227,6 +229,7 @@ from moomoo import (
         StockField,
         SortDir,
         Plate,
+        OrderBookType,
 )
 
 try:
@@ -319,34 +322,129 @@ def create_trade_context(market=None, security_firm=None):
 # Crypto trading context supports only FUTUSECURITIES (HK), FUTUINC (US), FUTUSG (SG)
 CRYPTO_SUPPORTED_FIRMS = ("FUTUSECURITIES", "FUTUINC", "FUTUSG")
 
+# Crypto firm auto-detect cache to avoid probing all firms on every call
+_CRYPTO_FIRM_CACHE_FILE = os.path.join(tempfile.gettempdir(), ".moomoo_crypto_firm")
+_CRYPTO_FIRM_CACHE_TTL = 3600
+
+
+def _crypto_firm_cache_read():
+    try:
+        if (time.time() - os.path.getmtime(_CRYPTO_FIRM_CACHE_FILE)) >= _CRYPTO_FIRM_CACHE_TTL:
+            return None
+        with open(_CRYPTO_FIRM_CACHE_FILE, "r", encoding="utf-8") as f:
+            name = f.read().strip()
+        return name if name in CRYPTO_SUPPORTED_FIRMS else None
+    except OSError:
+        return None
+
+
+def _crypto_firm_cache_write(firm_name):
+    try:
+        with open(_CRYPTO_FIRM_CACHE_FILE, "w", encoding="utf-8") as f:
+            f.write(firm_name)
+    except OSError:
+        pass
+
+
+def _crypto_firm_cache_clear():
+    try:
+        os.remove(_CRYPTO_FIRM_CACHE_FILE)
+    except OSError:
+        pass
+
+
+def _build_crypto_ctx(firm_enum, host, port):
+    kwargs = dict(host=host, port=port, security_firm=firm_enum)
+    if _sdk_supports_ai_type:
+        import inspect as _inspect
+        try:
+            if "ai_type" in _inspect.signature(OpenCryptoTradeContext).parameters:
+                kwargs["ai_type"] = 1
+        except (TypeError, ValueError):
+            pass
+    return OpenCryptoTradeContext(**kwargs)
+
+
+def _probe_crypto_firm(firm, host, port):
+    """Probe whether the given firm has an available CRYPTO account."""
+    ctx = None
+    try:
+        ctx = _build_crypto_ctx(firm, host, port)
+        ret, data = ctx.get_acc_list()
+        return ret == RET_OK and not is_empty(data)
+    except Exception:
+        return False
+    finally:
+        safe_close(ctx)
+
+
+def _detect_crypto_firm(host, port):
+    """Probe CRYPTO_SUPPORTED_FIRMS to find one with a real crypto account.
+
+    Cached entries are still probed once, so a stale cache (e.g. after the user
+    switched OpenD accounts) is automatically invalidated.
+    """
+    cached = _crypto_firm_cache_read()
+    if cached is not None:
+        firm = getattr(SecurityFirm, cached, None)
+        if firm is not None and _probe_crypto_firm(firm, host, port):
+            return firm
+        _crypto_firm_cache_clear()
+
+    for name in CRYPTO_SUPPORTED_FIRMS:
+        firm = getattr(SecurityFirm, name, None)
+        if firm is None:
+            continue
+        if _probe_crypto_firm(firm, host, port):
+            _crypto_firm_cache_write(name)
+            return firm
+    return None
+
 
 def create_crypto_trade_context(security_firm=None):
     """Create a crypto trade context (OpenCryptoTradeContext).
 
-    security_firm only supports FUTUSECURITIES, FUTUINC, FUTUSG.
-    Other firms will cause an error exit.
+    security_firm precedence: argument > MOOMOO_SECURITY_FIRM env > auto-detect.
+    Only FUTUSECURITIES, FUTUINC, FUTUSG are supported.
     """
     if OpenCryptoTradeContext is None:
-        print("Error: Current SDK does not support OpenCryptoTradeContext. Upgrade futu-api >= 10.4.6408")
+        try:
+            import moomoo as _mm
+            cur = getattr(_mm, "__version__", "unknown")
+        except ImportError:
+            cur = "unknown"
+        print(f"Error: Current moomoo-api {cur} does not provide OpenCryptoTradeContext. Crypto requires >= {MIN_CRYPTO_SDK_VERSION}. "
+              f"Run: pip install --upgrade \"moomoo-api>={MIN_CRYPTO_SDK_VERSION}\"")
         sys.exit(1)
     host, port = get_opend_config()
     _check_opend_alive(host, port)
+
+    use_json = "--json" in sys.argv
 
     firm_enum = security_firm
     if firm_enum is None:
         firm_enum = get_default_security_firm()
     if firm_enum is None:
-        firm_enum = SecurityFirm.FUTUSECURITIES
+        firm_enum = _detect_crypto_firm(host, port)
+    if firm_enum is None:
+        msg = (f"No crypto account found in {', '.join(CRYPTO_SUPPORTED_FIRMS)}. "
+               f"Confirm crypto trading is enabled or pass --security-firm explicitly.")
+        if use_json:
+            print(json.dumps({"error": msg}, ensure_ascii=False))
+        else:
+            print(f"Error: {msg}")
+        sys.exit(1)
 
     firm_name = format_enum(firm_enum)
     if firm_name not in CRYPTO_SUPPORTED_FIRMS:
-        print(f"Error: Crypto trading only supports {', '.join(CRYPTO_SUPPORTED_FIRMS)}. Got security_firm={firm_name}")
+        msg = f"Crypto trading only supports {', '.join(CRYPTO_SUPPORTED_FIRMS)}. Got security_firm={firm_name}"
+        if use_json:
+            print(json.dumps({"error": msg}, ensure_ascii=False))
+        else:
+            print(f"Error: {msg}")
         sys.exit(1)
 
-    kwargs = dict(host=host, port=port, security_firm=firm_enum)
-    if _sdk_supports_ai_type:
-        kwargs["ai_type"] = 1
-    return OpenCryptoTradeContext(**kwargs)
+    return _build_crypto_ctx(firm_enum, host, port)
 
 
 # ============================================================
@@ -372,10 +470,18 @@ def parse_market(market_str):
         "HKCC": TrdMarket.HKCC,
         "SG": TrdMarket.SG,
     }
+    if hasattr(TrdMarket, "MY"):
+        mapping["MY"] = TrdMarket.MY
+    if hasattr(TrdMarket, "JP"):
+        mapping["JP"] = TrdMarket.JP
     if hasattr(TrdMarket, "CRYPTO"):
         mapping["CRYPTO"] = TrdMarket.CRYPTO
         mapping["CC"] = TrdMarket.CRYPTO
     return mapping.get(str(market_str).upper(), TrdMarket.US)
+
+
+# CLI --market choices for trade scripts (SG/MY/JP require matching TrdMarket enum in SDK)
+TRD_MARKET_CLI_CHOICES = ["US", "HK", "HKCC", "CN", "SG", "MY", "JP"]
 
 
 # Stock code prefix -> Trading market mapping
@@ -385,6 +491,8 @@ _CODE_PREFIX_TO_MARKET = {
     "SH": "CN",
     "SZ": "CN",
     "SG": "SG",
+    "MY": "MY",
+    "JP": "JP",
     "CC": "CRYPTO",
 }
 
@@ -530,8 +638,33 @@ def safe_close(ctx):
         pass
 
 
+def _is_no_account_error(error_msg):
+    """Check if the error indicates no available trading account (distinct from quote permission)."""
+    msg = str(error_msg).lower()
+    keywords = [
+        "no available real accounts",
+        "no available accounts",
+        "no available simulate accounts",
+        "无可用账户", "无可用交易账户", "没有可用账户",
+    ]
+    return any(kw in msg for kw in keywords)
+
+
+def _is_unlock_needed_error(error_msg):
+    """Check if the error indicates trade is not unlocked."""
+    msg = str(error_msg).lower()
+    keywords = [
+        "没有解锁交易", "请先解锁交易", "未解锁交易", "交易未解锁",
+        "unlock needed", "trade not unlocked", "trade unlock",
+        "please unlock", "need unlock",
+    ]
+    return any(kw in msg for kw in keywords)
+
+
 def _is_permission_error(error_msg):
-    """Check if the error message indicates insufficient quote permissions"""
+    """Check if the error message indicates insufficient quote permissions. Account errors take precedence."""
+    if _is_no_account_error(error_msg) or _is_unlock_needed_error(error_msg):
+        return False
     keywords = [
         "权限", "没有权限", "权限不足", "无权限",
         "no permission", "permission denied", "not permission",
@@ -549,6 +682,8 @@ _MARKET_NAMES = {
     "HK": "HK stocks", "US": "US stocks",
     "SH": "A-shares", "SZ": "A-shares",
     "SG": "Singapore",
+    "MY": "Malaysia stocks",
+    "JP": "Japan stocks",
 }
 
 _AUTHORITY_URLS = {"moomoo": "https://openapi.moomoo.com/moomoo-api-doc/en/intro/authority.html"}
@@ -558,7 +693,7 @@ def _detect_market_from_argv():
     """Detect market from stock code in command-line arguments (e.g. HK.00700 -> HK stocks)"""
     import re
     for arg in sys.argv[1:]:
-        m = re.match(r'^(HK|US|SH|SZ|SG)\.', arg, re.IGNORECASE)
+        m = re.match(r'^(HK|US|SH|SZ|SG|MY|JP)\.', arg, re.IGNORECASE)
         if m:
             return _MARKET_NAMES.get(m.group(1).upper(), "")
     return ""
@@ -592,6 +727,20 @@ def _build_permission_hint_json():
 
 
 
+_NO_ACCOUNT_HINT = (
+    "No available trading account found. Common causes: 1) The selected security_firm has no "
+    "trading account for the target market; 2) the account logged into OpenD does not match the "
+    "target account; 3) crypto accounts must first be opened in the Futu/Moomoo app. "
+    "Adjust --security-firm / MOOMOO_SECURITY_FIRM or MOOMOO_TRD_ENV and retry."
+)
+
+_UNLOCK_NEEDED_HINT = (
+    "Real trading is not unlocked. Please click 'Unlock Trade' in the OpenD GUI and enter your "
+    "trade password to unlock, then retry placing/cancelling the order. For safety, this skill "
+    "does not call unlock_trade through the SDK."
+)
+
+
 def check_ret(ret, data, ctx=None, action="operation", output_json=None):
     """Check API return value, print error and exit on failure"""
     if ret != RET_OK:
@@ -601,16 +750,26 @@ def check_ret(ret, data, ctx=None, action="operation", output_json=None):
             except Exception:
                 output_json = False
 
-        perm_error = _is_permission_error(data)
+        no_acc_error = _is_no_account_error(data)
+        unlock_error = (not no_acc_error) and _is_unlock_needed_error(data)
+        perm_error = (not no_acc_error) and (not unlock_error) and _is_permission_error(data)
 
         if output_json:
             err_obj = {"ret": ret, "action": action, "error": str(data)}
-            if perm_error:
+            if no_acc_error:
+                err_obj["hint"] = _NO_ACCOUNT_HINT
+            elif unlock_error:
+                err_obj["hint"] = _UNLOCK_NEEDED_HINT
+            elif perm_error:
                 err_obj.update(_build_permission_hint_json())
             print(json.dumps(err_obj, ensure_ascii=False))
         else:
             print(f"{action} failed: {data}")
-            if perm_error:
+            if no_acc_error:
+                print(f"\n{_NO_ACCOUNT_HINT}")
+            elif unlock_error:
+                print(f"\n{_UNLOCK_NEEDED_HINT}")
+            elif perm_error:
                 print(_build_permission_hint())
         safe_close(ctx)
         sys.exit(1)
@@ -663,3 +822,100 @@ def df_to_records(df, limit=None):
             for k in keys
         })
     return records
+
+
+# ============================================================
+# Display Helpers
+# ============================================================
+
+def disp_width(s):
+    """Return the terminal display width of a string (CJK full-width = 2, others = 1)."""
+    from unicodedata import east_asian_width
+    return sum(2 if east_asian_width(c) in ("F", "W") else 1 for c in str(s))
+
+
+def pad_disp(s, width, align="left"):
+    """Pad a string to the given display width (CJK-aware)."""
+    s = str(s)
+    pad = max(0, width - disp_width(s))
+    if align == "right":
+        return " " * pad + s
+    return s + " " * pad
+
+
+def print_display_df(df, max_colwidth=26):
+    """Print a DataFrame to the terminal with CJK-aware column widths."""
+    import pandas as pd
+
+    if df is None or is_empty(df):
+        print("No data")
+        return
+    with pd.option_context(
+        "display.unicode.east_asian_width", True,
+        "display.width", None,
+        "display.max_rows", None,
+    ):
+        print(df.to_string(index=False, max_colwidth=max_colwidth))
+
+
+def scale_int(value, scale_pow10: int, display_decimals: int = None) -> str:
+    """Restore a scaled integer field to a decimal string without floating-point precision loss.
+
+    Example: scale_int(552000000000, 9)    -> "552.000000000"
+             scale_int(552000000000, 9, 3) -> "552.000"
+             scale_int(35804, 3)           -> "35.804"
+
+    :param value: Raw proto int64 value (int or int-convertible).
+    :param scale_pow10: Scale exponent; actual value = value / 10**scale_pow10.
+    :param display_decimals: Decimal places to show (defaults to scale_pow10).
+    :return: Formatted string with the specified decimal places.
+    """
+    from decimal import Decimal, ROUND_DOWN
+    if value is None:
+        return "-"
+    try:
+        iv = int(value)
+    except (TypeError, ValueError):
+        return "-"
+    d = Decimal(iv)
+    divisor = Decimal(10 ** scale_pow10)
+    result = d / divisor
+    decimals = display_decimals if display_decimals is not None else scale_pow10
+    fmt = "0." + "0" * decimals if decimals > 0 else "0"
+    return str(result.quantize(Decimal(fmt), rounding=ROUND_DOWN))
+
+
+def format_big_number(n, *, fixed: int = 2) -> str:
+    """Scale a large number to a human-readable string with K/M/B/T suffix.
+
+    Applied consistently across a column when any value is >= 1,000 (JSON path excluded).
+
+    Example: format_big_number(1_500_000_000_000) -> "1.50T"
+             format_big_number(2_300_000_000)      -> "2.30B"
+             format_big_number(4_500_000)           -> "4.50M"
+             format_big_number(12_300)              -> "12.30K"
+             format_big_number(999)                 -> "999"
+
+    :param n: Numeric value (int or float).
+    :param fixed: Decimal places (default 2).
+    :return: Formatted string with suffix.
+    """
+    if n is None:
+        return "-"
+    try:
+        v = float(n)
+    except (TypeError, ValueError):
+        return "-"
+    import math
+    if math.isnan(v) or math.isinf(v):
+        return "-"
+    abs_v = abs(v)
+    if abs_v >= 1e12:
+        return f"{v / 1e12:.{fixed}f}T"
+    if abs_v >= 1e9:
+        return f"{v / 1e9:.{fixed}f}B"
+    if abs_v >= 1e6:
+        return f"{v / 1e6:.{fixed}f}M"
+    if abs_v >= 1e3:
+        return f"{v / 1e3:.{fixed}f}K"
+    return str(int(v)) if v == int(v) else f"{v:.{fixed}f}"

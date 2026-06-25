@@ -10,8 +10,35 @@ API Limits:
 
 Return Field Description:
 - card_num: A consolidated account contains one or more business accounts (consolidated securities, consolidated futures, etc.), related to trading products
-- trdmarket_auth: List of markets the account is authorized to trade in
+- trdmarket_auth: List of markets the account is authorized to trade in (returned per-account; competition accounts follow contest rules)
 - acc_role: MASTER=master account, NORMAL=normal account
+- sim_acc_type: Simulated account type (SimAccType enum). New COMPETITION value identifies competition accounts.
+    NONE / STOCK / OPTION / STOCK_AND_OPTION / FUTURES / COMPETITION
+- competition_acc_name: Competition account name. Only competition accounts return a real name; other simulated and real accounts return N/A.
+
+Competition account characteristics:
+- US competition account: TrdMarket.US with acc_type=TrdAccType.MARGIN (margin/short supported)
+- HK competition account: TrdMarket.HK with acc_type=TrdAccType.CASH (margin not supported)
+
+- jp_acc_type: Japan sub-account type (SubAccType enum). Only meaningful for FUTUJP accounts.
+  Common values:
+    NONE                          - Non-Japan account / not applicable
+    JP_GENERAL                    - Japan general account (long)
+    JP_TOKUTEI                    - Japan tokutei (specified) account (long)
+    JP_NISA_GENERAL               - Japan general NISA
+    JP_NISA_TSUMITATE             - Japan tsumitate (accumulating) NISA
+    JP_GENERAL_SHORT              - Japan general account (short)
+    JP_TOKUTEI_SHORT              - Japan tokutei account (short)
+    JP_HONPO_GENERAL              - Japan domestic margin collateral - general
+    JP_GAIKOKU_GENERAL            - Japan foreign margin collateral - general
+    JP_HONPO_TOKUTEI              - Japan domestic margin collateral - tokutei
+    JP_GAIKOKU_TOKUTEI            - Japan foreign margin collateral - tokutei
+    JP_DERIVATIVE_LONG            - Japan derivatives - long
+    JP_DERIVATIVE_SHORT           - Japan derivatives - short
+    JP_HONPO_DERIVATIVE_GENERAL   - Japan domestic derivative margin - general
+    JP_GAIKOKU_DERIVATIVE_GENERAL - Japan foreign derivative margin - general
+    JP_HONPO_DERIVATIVE_TOKUTEI   - Japan domestic derivative margin - tokutei
+    JP_GAIKOKU_DERIVATIVE_TOKUTEI - Japan foreign derivative margin - tokutei
 """
 import argparse
 import json
@@ -53,6 +80,9 @@ def _parse_account_row(row):
         trdmarket_auth = [format_enum(m) for m in trdmarket_auth_raw]
     else:
         trdmarket_auth = []
+    sim_acc_type = format_enum(safe_get(row, "sim_acc_type", default="NONE"))
+    competition_acc_name_raw = safe_get(row, "competition_acc_name", default="")
+    competition_acc_name = competition_acc_name_raw if (sim_acc_type == "COMPETITION" and competition_acc_name_raw) else "N/A"
     return {
         "acc_id": safe_int(safe_get(row, "acc_id", default=0)),
         "acc_type": format_enum(safe_get(row, "acc_type", default="")),
@@ -62,6 +92,9 @@ def _parse_account_row(row):
         "security_firm": format_enum(safe_get(row, "security_firm", default="")),
         "trdmarket_auth": trdmarket_auth,
         "acc_status": format_enum(safe_get(row, "acc_status", default="")),
+        "sim_acc_type": sim_acc_type,
+        "competition_acc_name": competition_acc_name,
+        "jp_acc_type": format_enum(safe_get(row, "jp_acc_type", default="NONE")),
     }
 
 
@@ -106,6 +139,12 @@ def get_accounts(output_json=False, show_disabled=False):
             print(f"\n  Account ID: {a['acc_id']}")
             print(f"    Type: {a['acc_type']}  Role: {a['acc_role']}  Environment: {a['trd_env']}  Firm: {a['security_firm']}")
             print(f"    Trading Market Auth: {', '.join(a['trdmarket_auth']) if a['trdmarket_auth'] else 'N/A'}")
+            if a.get("sim_acc_type") and a["sim_acc_type"] != "NONE":
+                print(f"    Sim Account Type: {a['sim_acc_type']}")
+            if a.get("sim_acc_type") == "COMPETITION":
+                print(f"    Competition Account Name: {a['competition_acc_name']}")
+            if a.get("security_firm") == "FUTUJP" or (a.get("jp_acc_type") and a["jp_acc_type"] != "NONE"):
+                print(f"    JP Sub-Account Type: {a['jp_acc_type']}")
         print("\n" + "=" * 70)
 
 

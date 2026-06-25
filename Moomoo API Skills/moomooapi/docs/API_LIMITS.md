@@ -9,6 +9,7 @@ Rate limit rule: Maximum n calls within 30 seconds; the interval between the 1st
 | API | Rate Limit |
 |-----|------------|
 | `place_order` | 15/30s |
+| `place_combo_order` | 15/30s (shares bucket with `place_order`) |
 | `modify_order` | 20/30s |
 | `order_list_query` | 10/30s |
 
@@ -54,6 +55,8 @@ Subscription quota and historical Candlestick quota are tiered based on user ass
 | `get_cur_kline` | num max 1000 |
 | `request_history_kline` | max_count max 1000 per call, use page_req_key for pagination |
 | `get_stock_filter` | Max 200 results per call |
+| `get_search_quote` | Max 10 requests per 30 seconds |
+| `get_search_news` | Max 10 requests per 30 seconds |
 
 ## Cryptocurrency Limits
 

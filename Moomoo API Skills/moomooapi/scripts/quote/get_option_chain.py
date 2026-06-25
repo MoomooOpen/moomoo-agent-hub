@@ -3,10 +3,14 @@
 Get Option Chain
 
 Function: Retrieve the option chain data for a given underlying stock
-Usage: python get_option_chain.py HK.00700 --start 2024-01-01 --end 2024-12-31
+Usage: python get_option_chain.py HK.00700 --start 2026-06-01 --end 2026-06-30
 
 API limits:
 - Max 60 requests per 30 seconds
+- **start ~ end span must NOT exceed 30 days**; otherwise the API returns ret=-1
+  with message "option chain time span cannot exceed 30 days". For wider ranges,
+  call in batches (use get_option_expiration_date to enumerate expiries, then slide a 30-day window)
+- Underlying must be HK/US equities/ETFs or HK/US indices; JP / SG / MY / A-shares are NOT supported
 """
 import argparse
 import json
@@ -71,8 +75,8 @@ def get_option_chain(code, start=None, end=None, option_type=None, option_cond_t
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get option chain")
     parser.add_argument("code", help="Underlying stock code, e.g. HK.00700 or US.AAPL")
-    parser.add_argument("--start", default=None, help="Start date yyyy-MM-dd")
-    parser.add_argument("--end", default=None, help="End date yyyy-MM-dd")
+    parser.add_argument("--start", default=None, help="Start date yyyy-MM-dd (span with --end must not exceed 30 days)")
+    parser.add_argument("--end", default=None, help="End date yyyy-MM-dd (span with --start must not exceed 30 days)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_option_chain(args.code, start=args.start, end=args.end, output_json=args.output_json)

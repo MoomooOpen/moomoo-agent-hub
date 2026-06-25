@@ -16,6 +16,9 @@ Return Field Description:
 - price: Rounded to 3 decimal places
 - dealt_avg_price: No precision limit
 - create_time/updated_time: Format yyyy-MM-dd HH:mm:ss
+- jp_acc_type: Japan sub-account type (SubAccType enum). Only meaningful for FUTUJP accounts;
+  see get_accounts.py for full enum value list (JP_GENERAL / JP_TOKUTEI / JP_NISA_GENERAL /
+  JP_NISA_TSUMITATE / JP_HONPO_* / JP_GAIKOKU_* / JP_DERIVATIVE_* etc.).
 """
 import argparse
 import json
@@ -26,6 +29,7 @@ from common import (
     create_trade_context,
     parse_trd_env,
     parse_market,
+    TRD_MARKET_CLI_CHOICES,
     parse_security_firm,
     get_default_acc_id,
     get_default_trd_env,
@@ -88,6 +92,7 @@ def get_history_orders(acc_id=None, market=None, trd_env=None, code=None,
                 "dealt_qty": safe_float(safe_get(row, "dealt_qty", default=0)),
                 "create_time": safe_get(row, "create_time", default=""),
                 "updated_time": safe_get(row, "updated_time", default=""),
+                "jp_acc_type": format_enum(safe_get(row, "jp_acc_type", default="NONE")),
             })
 
         no_date_filter = not start and not end
@@ -103,8 +108,9 @@ def get_history_orders(acc_id=None, market=None, trd_env=None, code=None,
                 print("Note: Default query returns last 90 days only. Specify --start/--end for older orders.")
             print("=" * 80)
             for o in orders:
+                jp = f"  JP:{o['jp_acc_type']}" if o.get("jp_acc_type") and o["jp_acc_type"] != "NONE" else ""
                 print(f"  [{o['create_time']}] {o['order_id']}  {o['code']}  {o['side']}  "
-                      f"{o['qty']} shares@{o['price']}  Dealt:{o['dealt_qty']}  {o['status']}")
+                      f"{o['qty']} shares@{o['price']}  Dealt:{o['dealt_qty']}  {o['status']}{jp}")
             print("=" * 80)
 
     except Exception as e:
@@ -120,7 +126,7 @@ def get_history_orders(acc_id=None, market=None, trd_env=None, code=None,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get history orders")
     parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--market", choices=TRD_MARKET_CLI_CHOICES, default=None, help="Trading market")
     parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--code", default=None, help="Stock code filter")
     parser.add_argument("--start", default=None, help="Start date (YYYY-MM-DD)")

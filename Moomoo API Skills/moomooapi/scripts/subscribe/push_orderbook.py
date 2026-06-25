@@ -20,6 +20,7 @@ from common import (
     safe_close,
     SubType,
     RET_OK,
+    OrderBookType,
 )
 
 from moomoo import OrderBookHandlerBase, RET_ERROR
@@ -56,14 +57,30 @@ class OrderBookHandler(OrderBookHandlerBase):
         return RET_OK, data
 
 
-def push_orderbook(codes, duration=60, output_json=False):
+_ODD_LOT_MARKETS = ("MY", "SG")
+
+
+def push_orderbook(codes, duration=60, output_json=False, order_book_type=None):
+    # Odd lot order book only supports MY/SG markets
+    if order_book_type == OrderBookType.ODD:
+        for code in codes:
+            prefix = code.split(".")[0].upper() if "." in code else ""
+            if prefix not in _ODD_LOT_MARKETS:
+                msg = f"Odd lot order book only supports {'/'.join(_ODD_LOT_MARKETS)} markets, got: {code}"
+                if output_json:
+                    print(json.dumps({"error": msg}, ensure_ascii=False))
+                else:
+                    print(f"Error: {msg}")
+                sys.exit(1)
+
     ctx = None
     try:
         ctx = create_quote_context()
         handler = OrderBookHandler(output_json=output_json)
         ctx.set_handler(handler)
 
-        ret, msg = ctx.subscribe(codes, [SubType.ORDER_BOOK], subscribe_push=True)
+        sub_type = SubType.ORDER_BOOK_ODD if order_book_type == OrderBookType.ODD else SubType.ORDER_BOOK
+        ret, msg = ctx.subscribe(codes, [sub_type], subscribe_push=True)
         check_ret(ret, msg, ctx, "Subscribe to order book push")
 
         if not output_json:
@@ -87,8 +104,10 @@ def push_orderbook(codes, duration=60, output_json=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Receive order book push")
-    parser.add_argument("codes", nargs="+", help="Stock code, e.g. HK.00700")
+    parser.add_argument("codes", nargs="+", help="Stock code, e.g. MY.1155 / SG.S68")
     parser.add_argument("--duration", type=int, default=60, help="Duration to receive push (seconds, default: 60)")
+    parser.add_argument("--type", choices=["NORMAL", "ODD"], default=None, help="Order book type: NORMAL=round lot, ODD=odd lot. Odd lot only supports MY/SG markets")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
-    push_orderbook(args.codes, args.duration, args.output_json)
+    ob_type = getattr(OrderBookType, args.type) if args.type else None
+    push_orderbook(args.codes, args.duration, args.output_json, ob_type)

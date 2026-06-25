@@ -31,6 +31,9 @@ def get_ipo_list(market_str, output_json=False):
             "US": Market.US,
             "SH": Market.SH,
             "SZ": Market.SZ,
+            "SG": Market.SG,
+            "MY": Market.MY,
+            "JP": Market.JP,
         }
         market = market_map.get(market_str.upper())
         if market is None:
@@ -69,7 +72,7 @@ def get_ipo_list(market_str, output_json=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get IPO list")
-    parser.add_argument("market", choices=["HK", "US", "SH", "SZ"], help="Market")
+    parser.add_argument("market", choices=["HK", "US", "SH", "SZ", "SG", "MY", "JP"], help="Market (SG = Singapore, MY = Malaysia, JP = Japan)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_ipo_list(args.market, args.output_json)

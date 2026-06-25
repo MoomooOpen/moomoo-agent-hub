@@ -17,6 +17,9 @@ Return Field Description:
 - price: Rounded to 3 decimal places
 - dealt_avg_price: No precision limit
 - create_time/updated_time: Format yyyy-MM-dd HH:mm:ss
+- jp_acc_type: Japan sub-account type (SubAccType enum). Only meaningful for FUTUJP accounts;
+  see get_accounts.py for full enum value list (JP_GENERAL / JP_TOKUTEI / JP_NISA_GENERAL /
+  JP_NISA_TSUMITATE / JP_HONPO_* / JP_GAIKOKU_* / JP_DERIVATIVE_* etc.).
 """
 import argparse
 import json
@@ -27,6 +30,7 @@ from common import (
     create_trade_context,
     parse_trd_env,
     parse_market,
+    TRD_MARKET_CLI_CHOICES,
     parse_security_firm,
     get_default_acc_id,
     get_default_trd_env,
@@ -74,6 +78,7 @@ def get_orders(acc_id=None, market=None, trd_env=None, security_firm=None, outpu
                 "price": safe_float(safe_get(row, "price", default=0)),
                 "dealt_qty": safe_float(safe_get(row, "dealt_qty", default=0)),
                 "dealt_avg_price": safe_float(safe_get(row, "dealt_avg_price", default=0)),
+                "jp_acc_type": format_enum(safe_get(row, "jp_acc_type", default="NONE")),
             })
 
         if output_json:
@@ -86,6 +91,8 @@ def get_orders(acc_id=None, market=None, trd_env=None, security_firm=None, outpu
                 print(f"\n  Order ID: {o['order_id']}")
                 print(f"    Code: {o['code']}  Side: {o['side']}  Status: {o['status']}")
                 print(f"    Ordered: {o['qty']} shares @ {o['price']}  Dealt: {o['dealt_qty']} shares @ {o['dealt_avg_price']}")
+                if o.get("jp_acc_type") and o["jp_acc_type"] != "NONE":
+                    print(f"    JP Sub-Account: {o['jp_acc_type']}")
                 print("  " + "-" * 66)
             print("=" * 70)
 
@@ -102,7 +109,7 @@ def get_orders(acc_id=None, market=None, trd_env=None, security_firm=None, outpu
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get today's order list")
     parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--market", choices=TRD_MARKET_CLI_CHOICES, default=None, help="Trading market")
     parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],

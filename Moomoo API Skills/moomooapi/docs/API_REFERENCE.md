@@ -31,7 +31,7 @@ get_rehab(code)  -- Get adjustment factor
 get_history_kl_quota(get_detail=False)  -- Query historical Candlestick quota (check before calling request_history_kline)
 ```
 
-### Basic Info (5)
+### Basic Info (7)
 
 ```
 get_stock_basicinfo(market, stock_type=SecurityType.STOCK, code_list=None)  -- Get stock static info
@@ -39,6 +39,8 @@ get_global_state()  -- Get market states (returns dict, keys include market_hk/m
 request_trading_days(market=None, start=None, end=None, code=None)  -- Get trading calendar
 get_market_state(code_list)  -- Get market state
 get_stock_filter(market, filter_list, plate_code=None, begin=0, num=200)  -- Stock screener
+get_search_quote(keyword, max_count=10)  -- Search quote instruments
+get_search_news(keyword, max_count=10, news_sub_type=NewsSubType.ALL)  -- Search news
 ```
 
 ### Plates/Sectors (3)
@@ -49,11 +51,15 @@ get_plate_stock(plate_code, sort_field=SortField.CODE, ascend=True)  -- Get stoc
 get_owner_plate(code_list)  -- Get stock's plates
 ```
 
-### Derivatives (5)
+### Derivatives (9)
 
 ```
 get_option_chain(code, index_option_type=IndexOptionType.NORMAL, start=None, end=None, option_type=OptionType.ALL, option_cond_type=OptionCondType.ALL, data_filter=None)  -- Get option chain
 get_option_expiration_date(code, index_option_type=IndexOptionType.NORMAL)  -- Get option expiration dates
+get_option_strategy(code, option_strategy, expire_time, spread=None, far_expire_time=None, index_option_type=IndexOptionType.NORMAL, option_type=OptionType.ALL, strike_price=None)  -- Get option strategy combo legs (returns OptionStrategyLeg list, usable as input for get_option_quote/get_option_strategy_analysis)
+get_option_strategy_spread(code, option_strategy, expire_time, far_expire_time=None, index_option_type=IndexOptionType.NORMAL)  -- Get valid spread list for option strategy (supports SPREAD/STRANGLE/COLLAR/BUTTERFLY/CONDOR/IRON_BUTTERFLY/IRON_CONDOR/DIAGONAL_SPREAD only)
+get_option_quote(combo_leg_list)  -- Get real-time option snapshot (combo_leg_list is a list of OptionStrategyLeg, typically from get_option_strategy)
+get_option_strategy_analysis(combo_leg_list)  -- Option strategy P&L analysis: combo-level bid1/ask1 (order book price), max profit/loss, breakeven points, prob of profit, Delta, Theta (preferred for combo bid/ask and combo order pricing; do not net single-leg snapshots manually)
 get_referencestock_list(code, reference_type)  -- Get related stocks (underlying/warrants/CBBCs/options)
 get_future_info(code_list)  -- Get futures contract info
 get_warrant(stock_owner='', req=None)  -- Get warrants/CBBCs
@@ -87,7 +93,7 @@ set_price_reminder(code, op, key=None, reminder_type=None, reminder_freq=None, v
 get_ipo_list(market)  -- Get IPO list
 ```
 
-**Market Data API Subtotal: 35**
+**Market Data API Subtotal: 41**
 
 ---
 
@@ -101,10 +107,11 @@ unlock_trade(password=None, password_md5=None, is_unlock=True)  -- Unlock/lock t
 accinfo_query(trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, refresh_cache=False, currency=Currency.HKD, asset_category=AssetCategory.NONE)  -- Query account funds
 ```
 
-### Order Placement & Modification (3)
+### Order Placement & Modification (4)
 
 ```
-place_order(price, qty, code, trd_side, order_type=OrderType.NORMAL, adjust_limit=0, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, remark=None, time_in_force=TimeInForce.DAY, fill_outside_rth=False, aux_price=None, trail_type=None, trail_value=None, trail_spread=None, session=Session.NONE)  -- Place order (rate limit: 15/30s; session only for US stocks, supports RTH/ETH/OVERNIGHT/ALL)
+place_order(price, qty, code, trd_side, order_type=OrderType.NORMAL, adjust_limit=0, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, remark=None, time_in_force=TimeInForce.DAY, fill_outside_rth=False, aux_price=None, trail_type=None, trail_value=None, trail_spread=None, session=Session.NONE, jp_acc_type=SubAccType.JP_GENERAL, position_id=None)  -- Place order (rate limit: 15/30s; session only for US stocks; jp_acc_type/position_id only for FUTUJP)
+place_combo_order(combo_leg_list, price, qty, order_type=OrderType.NORMAL, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, remark="", time_in_force=TimeInForce.DAY, expire_time=None)  -- Place combo order (rate limit: 15/30s; shares bucket with place_order; moomoo skill supports leg sides BUY/SELL/SELLSHORT/BUYBACK; FUTUJP close legs require position_id from position_list_query(show_option_strategy_view=True))
 modify_order(modify_order_op, order_id, qty, price, adjust_limit=0, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, aux_price=None, trail_type=None, trail_value=None, trail_spread=None)  -- Modify/cancel order (rate limit: 20/30s)
 cancel_all_order(trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, trdmarket=TrdMarket.NONE)  -- Cancel all orders
 ```
@@ -124,16 +131,17 @@ deal_list_query(code="", deal_market=TrdMarket.NONE, trd_env=TrdEnv.REAL, acc_id
 history_deal_list_query(code='', deal_market=TrdMarket.NONE, start='', end='', trd_env=TrdEnv.REAL, acc_id=0, acc_index=0)  -- Query historical deals
 ```
 
-### Position & Funds (4)
+### Position & Funds (5)
 
 ```
-position_list_query(code='', position_market=TrdMarket.NONE, pl_ratio_min=None, pl_ratio_max=None, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, refresh_cache=False)  -- Query positions
-acctradinginfo_query(order_type, code, price, order_id=None, adjust_limit=0, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, session=Session.NONE)  -- Query max buy/sell quantity (session only for US stocks, supports RTH/ETH/OVERNIGHT/ALL)
+position_list_query(code='', position_market=TrdMarket.NONE, pl_ratio_min=None, pl_ratio_max=None, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, refresh_cache=False, asset_category=AssetCategory.NONE, show_option_strategy_view=False)  -- Query positions (asset_category supports NONE/JP/US; show_option_strategy_view added; response adds combo_id/strategy_type/position_type/acc_id/jp_acc_type)
+acctradinginfo_query(order_type, code, price, order_id=None, adjust_limit=0, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, session=Session.NONE, jp_acc_type=SubAccType.JP_GENERAL, position_id=None)  -- Query max buy/sell quantity (session only for US stocks; jp_acc_type/position_id only for FUTUJP)
+comboorder_tradinginfo_query(combo_leg_list, price, qty, order_type=OrderType.NORMAL, order_id=None, trd_env=TrdEnv.REAL, acc_id=0, acc_index=0)  -- Query combo order trading info (returns nlv_change/initial_margin_change/maintenance_margin_change/option_bp/max_withdraw_change/bp_decrease)
 get_acc_cash_flow(clearing_date='', trd_env=TrdEnv.REAL, acc_id=0, acc_index=0, cashflow_direction=CashFlowDirection.NONE)  -- Query account cash flow
 get_margin_ratio(code_list)  -- Query margin ratio
 ```
 
-**Trading API Subtotal: 15**
+**Trading API Subtotal: 17**
 
 ---
 
@@ -226,7 +234,7 @@ ctx.set_handler(handler)  -- Register push callback
 SysNotifyHandlerBase  -- System notification callback
 ```
 
-**Total API Count: Market Data 35 + Trading 15 + Push Handlers 9 + Base 7 = 66 interfaces**
+**Total API Count: Market Data 39 + Trading 17 + Push Handlers 9 + Base 7 = 72 interfaces**
 
 ## SubType Subscription Types (Full List)
 
@@ -246,8 +254,8 @@ SysNotifyHandlerBase  -- System notification callback
 - **TrdEnv**: `REAL` | `SIMULATE` — Crypto only supports `REAL`
 - **TimeInForce**: `DAY` | `GTC` | `IOC` (Immediate or Cancel) — `IOC` used only for crypto market orders; crypto limit orders are fixed to `GTC`
 - **ModifyOrderOp**: `NORMAL` (modify) | `CANCEL` (cancel) | `DISABLE` | `ENABLE` | `DELETE` — Crypto only supports `CANCEL`
-- **TrdMarket**: `HK` | `US` | `CN` | `HKCC` | `SG` | `CRYPTO`
-- **Market (quote)**: `HK` | `US` | `SH` | `SZ` | `HK_FUTURE` | `US_FUTURE` | `SG` | `CC` (crypto)
+- **TrdMarket**: `HK` | `US` | `CN` | `HKCC` | `SG` | `MY` | `JP` | `CRYPTO`
+- **Market (quote)**: `HK` | `US` | `SH` | `SZ` | `JP` (equities only, no derivatives) | `SG` (equities + warrants, no options) | `MY` (equities + warrants, quotes require account permission) | `HK_FUTURE` | `US_FUTURE` | `CC` (crypto)
 - **SecurityType**: `STOCK` | `IDX` | `ETF` | `WARRANT` | `BOND` | `DRVT` | `PLATE` | `CRYPTO`
 - **ExchType**: Added `ExchType_CC_CRYPTO = 19` (crypto exchange)
 - **Session**: `NONE` | `RTH` (regular hours) | `ETH` (extended hours) | `OVERNIGHT` | `ALL` — Subscribe only supports RTH/ETH/ALL (OVERNIGHT not supported); Place order supports RTH/ETH/OVERNIGHT/ALL; session not validated for crypto

@@ -25,25 +25,41 @@ from common import (
     is_empty,
     SubType,
     RET_OK,
+    OrderBookType,
 )
 
 
-def get_orderbook(code, num=10, output_json=False):
+_ODD_LOT_MARKETS = ("MY", "SG")
+
+
+def get_orderbook(code, num=10, output_json=False, order_book_type=None):
+    # Odd lot order book only supports MY and SG markets
+    if order_book_type == OrderBookType.ODD:
+        prefix = code.split(".")[0].upper() if "." in code else ""
+        if prefix not in _ODD_LOT_MARKETS:
+            msg = f"Odd lot order book only supports {'/'.join(_ODD_LOT_MARKETS)} markets, got: {code}"
+            if output_json:
+                print(json.dumps({"error": msg}, ensure_ascii=False))
+            else:
+                print(f"Error: {msg}")
+            sys.exit(1)
+
     ctx = None
     try:
         ctx = create_quote_context()
-        # Must subscribe to ORDER_BOOK first
-        ret, msg = ctx.subscribe([code], [SubType.ORDER_BOOK])
+        # Choose subscription type: ORDER_BOOK_ODD for odd lot, ORDER_BOOK for normal
+        sub_type = SubType.ORDER_BOOK_ODD if order_book_type == OrderBookType.ODD else SubType.ORDER_BOOK
+        ret, msg = ctx.subscribe([code], [sub_type])
         if ret != RET_OK:
             print(f"Subscription failed: {msg}")
             sys.exit(1)
 
-        ret, data = ctx.get_order_book(code, num=num)
+        ret, data = ctx.get_order_book(code, num=num, order_book_type=order_book_type)
         check_ret(ret, data, ctx, "get order book")
 
         if is_empty(data):
             if output_json:
-                print(json.dumps({"code": code, "Bid": [], "Ask": []}))
+                print(json.dumps({"code": code, "Bid": [], "Ask": [], "order_book_type": data.get("order_book_type", "") if isinstance(data, dict) else ""}))
             else:
                 print("No data")
             return
@@ -51,12 +67,14 @@ def get_orderbook(code, num=10, output_json=False):
         # data is a dict containing Bid and Ask lists
         bids = data.get("Bid", [])
         asks = data.get("Ask", [])
+        ob_type = data.get("order_book_type", "")
 
         if output_json:
-            print(json.dumps({"code": code, "Bid": bids, "Ask": asks}, ensure_ascii=False))
+            print(json.dumps({"code": code, "Bid": bids, "Ask": asks, "order_book_type": ob_type}, ensure_ascii=False))
         else:
+            type_label = f" [{ob_type}]" if ob_type else ""
             print("=" * 60)
-            print(f"Order Book: {code}")
+            print(f"Order Book: {code}{type_label}")
             print("=" * 60)
             print(f"  {'Ask':^28}  |  {'Bid':^28}")
             print("  " + "-" * 58)
@@ -85,8 +103,10 @@ def get_orderbook(code, num=10, output_json=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get order book data")
-    parser.add_argument("code", help="Stock code, e.g. HK.00700")
+    parser.add_argument("code", help="Stock code, e.g. MY.1155 / SG.S68")
     parser.add_argument("--num", type=int, default=10, help="Number of price levels (default: 10)")
+    parser.add_argument("--type", choices=["NORMAL", "ODD"], default=None, help="Order book type: NORMAL=round lot, ODD=odd lot (default: NORMAL). Odd lot only supports MY and SG markets.")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
-    get_orderbook(args.code, args.num, args.output_json)
+    ob_type = getattr(OrderBookType, args.type) if args.type else None
+    get_orderbook(args.code, args.num, args.output_json, ob_type)

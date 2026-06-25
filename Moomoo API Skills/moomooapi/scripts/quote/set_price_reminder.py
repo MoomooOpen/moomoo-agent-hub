@@ -3,17 +3,20 @@
 Set Price Reminder
 
 Function: Set price reminders for a stock
-Usage: python set_price_reminder.py HK.00700 --op SET --type PRICE_UP --value 400
+Usage: python set_price_reminder.py HK.00700 --op ADD --type PRICE_UP --value 400
 
 API Limits:
 - Max 60 requests per 30 seconds
 - Max 10 reminders per stock
 
 Parameters:
-- op: SET (create/modify), DEL (delete), DEL_ALL (delete all for the stock), ENABLE (enable), DISABLE (disable)
+- op: ADD (create), MODIFY (modify, requires --reminder-id), DEL (delete one, requires --reminder-id),
+      DEL_ALL (delete all for the stock), ENABLE (enable), DISABLE (disable)
 - reminder_type: PRICE_UP (price rises to), PRICE_DOWN (price drops to), CHANGE_RATE_UP (daily gain exceeds),
                  CHANGE_RATE_DOWN (daily loss exceeds), BID_PRICE_UP (bid price rises to), ASK_PRICE_DOWN (ask price drops to),
-                 TURNOVER_UP (volume exceeds), TURNOVER_RATE_UP (turnover rate exceeds)
+                 TURNOVER_UP (turnover exceeds), TURNOVER_RATE_UP (turnover rate exceeds), VOLUME_UP (volume exceeds),
+                 FIVE_MIN_CHANGE_RATE_UP/DOWN (5-min change rate up/down), THREE_MIN_CHANGE_RATE_UP/DOWN (3-min change rate up/down),
+                 BID_VOL_UP (bid volume exceeds), ASK_VOL_UP (ask volume exceeds)
 """
 import argparse
 import json
@@ -34,7 +37,8 @@ def set_price_reminder(code, op, reminder_type=None, value=None, reminder_id=Non
         from moomoo import SetPriceReminderOp, PriceReminderType
 
         op_map = {
-            "SET": SetPriceReminderOp.SET,
+            "ADD": SetPriceReminderOp.ADD,
+            "MODIFY": SetPriceReminderOp.MODIFY,
             "DEL": SetPriceReminderOp.DEL,
             "DEL_ALL": SetPriceReminderOp.DEL_ALL,
             "ENABLE": SetPriceReminderOp.ENABLE,
@@ -53,10 +57,17 @@ def set_price_reminder(code, op, reminder_type=None, value=None, reminder_id=Non
                 "PRICE_DOWN": PriceReminderType.PRICE_DOWN,
                 "CHANGE_RATE_UP": PriceReminderType.CHANGE_RATE_UP,
                 "CHANGE_RATE_DOWN": PriceReminderType.CHANGE_RATE_DOWN,
-                "BID_PRICE_UP": PriceReminderType.BID_PRICE_UP,
-                "ASK_PRICE_DOWN": PriceReminderType.ASK_PRICE_DOWN,
+                "FIVE_MIN_CHANGE_RATE_UP": PriceReminderType.FIVE_MIN_CHANGE_RATE_UP,
+                "FIVE_MIN_CHANGE_RATE_DOWN": PriceReminderType.FIVE_MIN_CHANGE_RATE_DOWN,
+                "THREE_MIN_CHANGE_RATE_UP": PriceReminderType.THREE_MIN_CHANGE_RATE_UP,
+                "THREE_MIN_CHANGE_RATE_DOWN": PriceReminderType.THREE_MIN_CHANGE_RATE_DOWN,
+                "VOLUME_UP": PriceReminderType.VOLUME_UP,
                 "TURNOVER_UP": PriceReminderType.TURNOVER_UP,
                 "TURNOVER_RATE_UP": PriceReminderType.TURNOVER_RATE_UP,
+                "BID_PRICE_UP": PriceReminderType.BID_PRICE_UP,
+                "ASK_PRICE_DOWN": PriceReminderType.ASK_PRICE_DOWN,
+                "BID_VOL_UP": PriceReminderType.BID_VOL_UP,
+                "ASK_VOL_UP": PriceReminderType.ASK_VOL_UP,
             }
             t = type_map.get(reminder_type.upper())
             if t is None:
@@ -88,7 +99,9 @@ def set_price_reminder(code, op, reminder_type=None, value=None, reminder_id=Non
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Set price reminder")
     parser.add_argument("code", help="Stock code, e.g. HK.00700")
-    parser.add_argument("--op", required=True, choices=["SET", "DEL", "DEL_ALL", "ENABLE", "DISABLE"], help="Operation type")
+    parser.add_argument("--op", required=True,
+                        choices=["ADD", "MODIFY", "DEL", "DEL_ALL", "ENABLE", "DISABLE"],
+                        help="Operation type (ADD=create, MODIFY=modify with --reminder-id, DEL=delete one with --reminder-id, DEL_ALL=delete all)")
     parser.add_argument("--type", dest="reminder_type", default=None, help="Reminder type")
     parser.add_argument("--value", type=float, default=None, help="Reminder value")
     parser.add_argument("--reminder-id", type=int, default=None, help="Reminder ID (used for modify/delete)")

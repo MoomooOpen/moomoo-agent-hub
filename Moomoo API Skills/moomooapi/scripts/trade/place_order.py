@@ -21,6 +21,11 @@ Parameter Description:
 - aux_price: Required for stop-loss/take-profit type orders
 - trail_type/trail_value/trail_spread: Required for trailing stop orders
 - session: Only for US stocks, supports RTH/ETH/OVERNIGHT/ALL
+- jp_acc_type: SubAccType enum, only for FUTUJP accounts. Routes the order to a specific JP
+  sub-account (JP_GENERAL / JP_TOKUTEI / JP_NISA_GENERAL / JP_NISA_TSUMITATE / JP_*_SHORT /
+  JP_HONPO_* / JP_GAIKOKU_* / JP_DERIVATIVE_*). Defaults to JP_GENERAL server-side.
+- position_id: Position ID returned by position_list_query. Required when closing/covering a
+  specific JP margin or short position; the API maps the order to that exact position record.
 """
 import argparse
 import json
@@ -68,17 +73,38 @@ def _audit_log(entry):
         pass
 
 
+def _resolve_jp_acc_type(jp_acc_type):
+    if not jp_acc_type:
+        return None
+    try:
+        from moomoo import SubAccType
+    except ImportError:
+        return None
+    return getattr(SubAccType, str(jp_acc_type).upper(), None)
+
+
 def place_order(code, side, quantity, price=None, order_type="NORMAL",
                 acc_id=None, trd_env=None, security_firm=None, output_json=False,
-                confirmed=False, fill_outside_rth=False, session_str="NONE"):
+                confirmed=False, fill_outside_rth=False, session_str="NONE",
+                jp_acc_type=None, position_id=None):
     acc_id = acc_id or get_default_acc_id()
     trd_env = parse_trd_env(trd_env) if trd_env else get_default_trd_env()
     trd_side = parse_trd_side(side)
 
+    jp_acc_type_enum = _resolve_jp_acc_type(jp_acc_type)
+    if jp_acc_type and jp_acc_type_enum is None:
+        msg = (f"jp_acc_type={jp_acc_type} is not supported by current moomoo-api SDK. "
+               f"Upgrade the SDK or omit --jp-acc-type.")
+        if output_json:
+            print(json.dumps({"error": msg}, ensure_ascii=False))
+        else:
+            print(f"Error: {msg}")
+        sys.exit(1)
+
     # Automatically infer trading market from --code prefix
     market = infer_market_from_code(code)
     if not market:
-        msg = f"Unable to infer trading market from code '{code}', please use full format such as US.AAPL, HK.00700"
+        msg = f"Unable to infer trading market from code '{code}', please use full format such as US.AAPL, HK.00700, SG.D05, MY.1155, JP.7203"
         if output_json:
             print(json.dumps({"error": msg}, ensure_ascii=False))
         else:
@@ -115,6 +141,8 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
             "order_type": str(order_type).upper(),
             "trd_env": "REAL",
             "acc_id": acc_id,
+            "jp_acc_type": jp_acc_type or None,
+            "position_id": position_id or None,
             "message": "Real trading requires confirmation. Please verify order details and re-execute with the --confirmed parameter.",
         }
         if output_json:
@@ -129,6 +157,10 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
             print(f"  Price:      {price}")
             print(f"  Type:       {order_type}")
             print(f"  Account:    {acc_id}")
+            if jp_acc_type:
+                print(f"  JP Sub-Account: {jp_acc_type}")
+            if position_id:
+                print(f"  Position ID: {position_id}")
             print("=" * 60)
             print("Please confirm and re-execute with the --confirmed parameter.")
         sys.exit(2)
@@ -168,6 +200,10 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
             order_kwargs["fill_outside_rth"] = True
         if session != Session.NONE:
             order_kwargs["session"] = session
+        if jp_acc_type_enum is not None:
+            order_kwargs["jp_acc_type"] = jp_acc_type_enum
+        if position_id:
+            order_kwargs["position_id"] = position_id
         ret, data = ctx.place_order(**order_kwargs)
         check_ret(ret, data, ctx, "Place order")
 
@@ -185,6 +221,8 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
             "price": price,
             "order_type": str(order_type).upper(),
             "trd_env": format_enum(trd_env),
+            "jp_acc_type": jp_acc_type or None,
+            "position_id": position_id or None,
             "status": "submitted",
         }
 
@@ -233,6 +271,18 @@ if __name__ == "__main__":
                         help="Allow order to fill outside regular trading hours (US pre/post market, HK pre-market auction)")
     parser.add_argument("--session", choices=["NONE", "RTH", "ETH", "OVERNIGHT", "ALL"],
                         default="NONE", help="US stock trading session (only for US stocks)")
+    parser.add_argument("--jp-acc-type",
+                        choices=["JP_GENERAL", "JP_TOKUTEI", "JP_NISA_GENERAL", "JP_NISA_TSUMITATE",
+                                 "JP_GENERAL_SHORT", "JP_TOKUTEI_SHORT",
+                                 "JP_HONPO_GENERAL", "JP_GAIKOKU_GENERAL",
+                                 "JP_HONPO_TOKUTEI", "JP_GAIKOKU_TOKUTEI",
+                                 "JP_DERIVATIVE_LONG", "JP_DERIVATIVE_SHORT",
+                                 "JP_HONPO_DERIVATIVE_GENERAL", "JP_GAIKOKU_DERIVATIVE_GENERAL",
+                                 "JP_HONPO_DERIVATIVE_TOKUTEI", "JP_GAIKOKU_DERIVATIVE_TOKUTEI"],
+                        default=None,
+                        help="JP sub-account type (only for FUTUJP accounts; default JP_GENERAL server-side)")
+    parser.add_argument("--position-id", default=None,
+                        help="Position ID (from position_list_query) for closing/covering a specific JP margin or short position")
     parser.add_argument("--confirmed", action="store_true", help="Real trading confirmation flag (preview only without this flag)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
@@ -240,4 +290,5 @@ if __name__ == "__main__":
                 order_type=args.order_type, acc_id=args.acc_id,
                 trd_env=args.trd_env, security_firm=args.security_firm,
                 output_json=args.output_json, confirmed=args.confirmed,
-                fill_outside_rth=args.fill_outside_rth, session_str=args.session)
+                fill_outside_rth=args.fill_outside_rth, session_str=args.session,
+                jp_acc_type=args.jp_acc_type, position_id=args.position_id)

@@ -8,6 +8,7 @@ Usage: python get_all_portfolios.py [--trd-env SIMULATE] [--acc-id 6795352] [--j
 Parameter Description:
 - --trd-env: Trading environment filter, SIMULATE or REAL (displays all by default)
 - --acc-id: Specify an account ID to query only that account
+- --show-option-strategy-view: Query positions in option strategy view
 - --json: JSON format output
 """
 import argparse
@@ -78,7 +79,17 @@ def get_all_accounts(host, port):
     return accounts
 
 
-def query_portfolio(host, port, acc_id, trd_env):
+def _resolve_asset_category(asset_category):
+    if not asset_category:
+        return None
+    try:
+        from moomoo import AssetCategory
+    except ImportError:
+        return None
+    return getattr(AssetCategory, str(asset_category).upper(), None)
+
+
+def query_portfolio(host, port, acc_id, trd_env, asset_cat_enum=None, show_option_strategy_view=False):
     """Query funds and positions for a single account"""
     from common import OpenSecTradeContext
     kwargs = dict(host=host, port=port, filter_trdmarket=TrdMarket.NONE)
@@ -87,7 +98,10 @@ def query_portfolio(host, port, acc_id, trd_env):
     ctx = OpenSecTradeContext(**kwargs)
     try:
         # Funds
-        ret, acc_data = ctx.accinfo_query(trd_env=trd_env, acc_id=acc_id)
+        acc_kwargs = dict(trd_env=trd_env, acc_id=acc_id)
+        if asset_cat_enum is not None:
+            acc_kwargs["asset_category"] = asset_cat_enum
+        ret, acc_data = ctx.accinfo_query(**acc_kwargs)
         funds = {}
         if ret == RET_OK and not is_empty(acc_data):
             row = acc_data.iloc[0]
@@ -103,7 +117,11 @@ def query_portfolio(host, port, acc_id, trd_env):
             }
 
         # Positions
-        ret, pos_data = ctx.position_list_query(trd_env=trd_env, acc_id=acc_id)
+        pos_kwargs = dict(trd_env=trd_env, acc_id=acc_id)
+        if asset_cat_enum is not None:
+            pos_kwargs["asset_category"] = asset_cat_enum
+        pos_kwargs["show_option_strategy_view"] = show_option_strategy_view
+        ret, pos_data = ctx.position_list_query(**pos_kwargs)
         positions = []
         if ret == RET_OK and not is_empty(pos_data):
             for i in range(len(pos_data)):
@@ -118,6 +136,11 @@ def query_portfolio(host, port, acc_id, trd_env):
                     "market_val": safe_float(safe_get(row, "market_val", default=0)),
                     "unrealized_pl": safe_float(safe_get(row, "unrealized_pl", default=0)),
                     "pl_ratio_avg_cost": safe_float(safe_get(row, "pl_ratio_avg_cost", default=0)),
+                    "combo_id": safe_get(row, "combo_id", default=""),
+                    "strategy_type": safe_get(row, "strategy_type", default=""),
+                    "position_type": safe_get(row, "position_type", default=""),
+                    "acc_id": safe_get(row, "acc_id", default=""),
+                    "jp_acc_type": safe_get(row, "jp_acc_type", default=""),
                 })
 
         return funds, positions
@@ -129,8 +152,16 @@ def main():
     parser = argparse.ArgumentParser(description="Query all account funds and positions")
     parser.add_argument("--acc-id", type=int, default=None, help="Specify account ID")
     parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment filter")
+    parser.add_argument("--asset-category", choices=["NONE", "JP", "US"], default=None,
+                        help="AssetCategory filter (NONE/JP/US) for accinfo_query and position_list_query")
+    parser.add_argument("--show-option-strategy-view", action="store_true",
+                        help="View positions by option strategy dimension")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
+    asset_cat_enum = _resolve_asset_category(args.asset_category)
+    if args.asset_category and asset_cat_enum is None:
+        print(f"Error: AssetCategory={args.asset_category} not supported by current moomoo-api SDK")
+        sys.exit(1)
 
     from common import get_opend_config, _check_opend_alive
     host, port = get_opend_config()
@@ -157,7 +188,14 @@ def main():
         acc_id = acc["acc_id"]
         trd_env_str = acc["trd_env"]
         trd_env = TrdEnv.REAL if trd_env_str == "REAL" else TrdEnv.SIMULATE
-        funds, positions = query_portfolio(host, port, acc_id, trd_env)
+        funds, positions = query_portfolio(
+            host,
+            port,
+            acc_id,
+            trd_env,
+            asset_cat_enum=asset_cat_enum,
+            show_option_strategy_view=args.show_option_strategy_view,
+        )
         results.append({
             "acc_id": acc_id,
             "trd_env": trd_env_str,
@@ -181,10 +219,27 @@ def main():
             if f:
                 print(f"  Total Assets: {f['total_assets']:,.2f}  Cash: {f['cash']:,.2f}  Position Value: {f['market_val']:,.2f}")
             if r["positions"]:
-                print(f"  {'Code':<25} {'Name':<12} {'Qty':>8} {'Price':>10} {'Value':>12} {'P/L%':>8}")
-                print("  " + "-" * 75)
+                if args.show_option_strategy_view:
+                    print(
+                        f"  {'Code':<25} {'Name':<12} {'Qty':>8} {'Price':>10} {'Value':>12} {'P/L%':>8} "
+                        f"{'Strategy':<12} {'Pos Type':<10}"
+                    )
+                    print("  " + "-" * 100)
+                else:
+                    print(f"  {'Code':<25} {'Name':<12} {'Qty':>8} {'Price':>10} {'Value':>12} {'P/L%':>8}")
+                    print("  " + "-" * 75)
                 for p in r["positions"]:
-                    print(f"  {p['code']:<25} {p['name']:<12} {p['qty']:>8.0f} {p['nominal_price']:>10.3f} {p['market_val']:>12.2f} {p['pl_ratio_avg_cost']:>8.2f}%")
+                    if args.show_option_strategy_view:
+                        print(
+                            f"  {p['code']:<25} {p['name']:<12} {p['qty']:>8.0f} {p['nominal_price']:>10.3f} "
+                            f"{p['market_val']:>12.2f} {p['pl_ratio_avg_cost']:>8.2f}% {str(p['strategy_type']):<12} "
+                            f"{str(p['position_type']):<10}"
+                        )
+                    else:
+                        print(
+                            f"  {p['code']:<25} {p['name']:<12} {p['qty']:>8.0f} {p['nominal_price']:>10.3f} "
+                            f"{p['market_val']:>12.2f} {p['pl_ratio_avg_cost']:>8.2f}%"
+                        )
             else:
                 print("  No positions")
 

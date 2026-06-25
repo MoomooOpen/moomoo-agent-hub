@@ -22,6 +22,7 @@ sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abs
 from common import (
     create_trade_context,
     parse_trd_env,
+    TRD_MARKET_CLI_CHOICES,
     parse_security_firm,
     get_default_acc_id,
     get_default_trd_env,
@@ -80,7 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("--start", default=None, help="Start date yyyy-MM-dd")
     parser.add_argument("--end", default=None, help="End date yyyy-MM-dd")
     parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
-    parser.add_argument("--market", choices=["US", "HK", "HKCC", "CN", "SG"], default=None, help="Trading market")
+    parser.add_argument("--market", choices=TRD_MARKET_CLI_CHOICES, default=None, help="Trading market")
     parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
