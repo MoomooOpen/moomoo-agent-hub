@@ -2,7 +2,7 @@
 """
 Query All Account Funds and Positions
 
-Function: Iterate through all trading accounts and query funds and position information for each
+Function: Iterate through all trading accounts (securities + futures) and query funds and positions for each
 Usage: python get_all_portfolios.py [--trd-env SIMULATE] [--acc-id 6795352] [--json]
 
 Parameter Description:
@@ -17,7 +17,6 @@ import sys
 import os as _os
 sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..")))
 from common import (
-    create_trade_context,
     parse_trd_env,
     parse_security_firm,
     check_ret,
@@ -48,34 +47,47 @@ ALL_FIRMS = [
 
 
 def get_all_accounts(host, port):
-    """Get all account list (deduplicated)"""
-    from common import get_opend_config, _check_opend_alive, OpenSecTradeContext
+    """Get all account list (securities + futures, deduplicated by acc_id)"""
+    from common import OpenSecTradeContext, OpenFutureTradeContext
+
     seen = set()
     accounts = []
-    for firm in ALL_FIRMS:
+
+    def _collect(ctx_cls, ctx_type, firm):
+        if ctx_cls is None:
+            return
         try:
-            kwargs = dict(host=host, port=port, filter_trdmarket=TrdMarket.NONE, security_firm=firm)
+            kwargs = dict(host=host, port=port, security_firm=firm)
+            if ctx_cls is OpenSecTradeContext:
+                kwargs["filter_trdmarket"] = TrdMarket.NONE
             if _sdk_supports_ai_type:
                 kwargs["ai_type"] = 1
-            ctx = OpenSecTradeContext(**kwargs)
+            ctx = ctx_cls(**kwargs)
             try:
                 ret, data = ctx.get_acc_list()
             finally:
                 safe_close(ctx)
-            if ret == RET_OK and not is_empty(data):
-                for i in range(len(data)):
-                    row = data.iloc[i]
-                    acc_id = safe_int(safe_get(row, "acc_id", default=0))
-                    if acc_id and acc_id not in seen:
-                        seen.add(acc_id)
-                        accounts.append({
-                            "acc_id": acc_id,
-                            "trd_env": safe_get(row, "trd_env", default="N/A"),
-                            "acc_type": safe_get(row, "acc_type", default="N/A"),
-                            "trdmarket_auth": safe_get(row, "trdmarket_auth", default=[]),
-                        })
+            if ret != RET_OK or is_empty(data):
+                return
+            for i in range(len(data)):
+                row = data.iloc[i]
+                acc_id = safe_int(safe_get(row, "acc_id", default=0))
+                if not acc_id or acc_id in seen:
+                    continue
+                seen.add(acc_id)
+                accounts.append({
+                    "acc_id": acc_id,
+                    "trd_env": safe_get(row, "trd_env", default="N/A"),
+                    "acc_type": safe_get(row, "acc_type", default="N/A"),
+                    "trdmarket_auth": safe_get(row, "trdmarket_auth", default=[]),
+                    "ctx_type": ctx_type,
+                })
         except Exception:
-            continue
+            return
+
+    for firm in ALL_FIRMS:
+        _collect(OpenSecTradeContext, "SEC", firm)
+        _collect(OpenFutureTradeContext, "FUTURE", firm)
     return accounts
 
 
@@ -89,13 +101,22 @@ def _resolve_asset_category(asset_category):
     return getattr(AssetCategory, str(asset_category).upper(), None)
 
 
-def query_portfolio(host, port, acc_id, trd_env, asset_cat_enum=None, show_option_strategy_view=False):
+def query_portfolio(host, port, acc_id, trd_env, ctx_type="SEC",
+                    asset_cat_enum=None, show_option_strategy_view=False):
     """Query funds and positions for a single account"""
-    from common import OpenSecTradeContext
-    kwargs = dict(host=host, port=port, filter_trdmarket=TrdMarket.NONE)
+    from common import OpenSecTradeContext, OpenFutureTradeContext
+
+    if str(ctx_type).upper() == "FUTURE":
+        if OpenFutureTradeContext is None:
+            raise RuntimeError("Current SDK does not support OpenFutureTradeContext; please upgrade moomoo-api")
+        kwargs = dict(host=host, port=port)
+        ctx_cls = OpenFutureTradeContext
+    else:
+        kwargs = dict(host=host, port=port, filter_trdmarket=TrdMarket.NONE)
+        ctx_cls = OpenSecTradeContext
     if _sdk_supports_ai_type:
         kwargs["ai_type"] = 1
-    ctx = OpenSecTradeContext(**kwargs)
+    ctx = ctx_cls(**kwargs)
     try:
         # Funds
         acc_kwargs = dict(trd_env=trd_env, acc_id=acc_id)
@@ -149,7 +170,7 @@ def query_portfolio(host, port, acc_id, trd_env, asset_cat_enum=None, show_optio
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Query all account funds and positions")
+    parser = argparse.ArgumentParser(description="Query all account funds and positions (securities + futures)")
     parser.add_argument("--acc-id", type=int, default=None, help="Specify account ID")
     parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment filter")
     parser.add_argument("--asset-category", choices=["NONE", "JP", "US"], default=None,
@@ -193,6 +214,7 @@ def main():
             port,
             acc_id,
             trd_env,
+            ctx_type=acc.get("ctx_type", "SEC"),
             asset_cat_enum=asset_cat_enum,
             show_option_strategy_view=args.show_option_strategy_view,
         )
@@ -201,6 +223,7 @@ def main():
             "trd_env": trd_env_str,
             "acc_type": acc["acc_type"],
             "trdmarket_auth": acc["trdmarket_auth"],
+            "ctx_type": acc.get("ctx_type", "SEC"),
             "funds": funds,
             "positions": positions,
         })
@@ -213,7 +236,7 @@ def main():
             markets = r["trdmarket_auth"] if isinstance(r["trdmarket_auth"], list) else [r["trdmarket_auth"]]
             market_str = ",".join(str(m) for m in markets)
             print(f"\n{'='*60}")
-            print(f"Account {r['acc_id']} | {env_label} | {r['acc_type']} | Market: {market_str}")
+            print(f"Account {r['acc_id']} | {env_label} | {r['acc_type']} | Context: {r['ctx_type']} | Market: {market_str}")
             print(f"{'='*60}")
             f = r["funds"]
             if f:

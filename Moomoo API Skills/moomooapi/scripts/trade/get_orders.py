@@ -27,7 +27,9 @@ import sys
 import os as _os
 sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..")))
 from common import (
-    create_trade_context,
+    create_sec_or_future_trade_context,
+    normalize_trade_ctx_type,
+    TRADE_CTX_TYPE_CHOICES,
     parse_trd_env,
     parse_market,
     TRD_MARKET_CLI_CHOICES,
@@ -44,14 +46,15 @@ from common import (
 )
 
 
-def get_orders(acc_id=None, market=None, trd_env=None, security_firm=None, output_json=False):
+def get_orders(acc_id=None, market=None, trd_env=None, security_firm=None, ctx_type="SEC", output_json=False):
     acc_id = acc_id or get_default_acc_id()
     trd_market = parse_market(market) if market else get_default_market()
     trd_env = parse_trd_env(trd_env) if trd_env else get_default_trd_env()
+    ctx_type = normalize_trade_ctx_type(ctx_type)
 
     ctx = None
     try:
-        ctx = create_trade_context(trd_market, security_firm=parse_security_firm(security_firm))
+        ctx = create_sec_or_future_trade_context(trd_market, security_firm=parse_security_firm(security_firm), ctx_type=ctx_type)
         ret, data = ctx.order_list_query(trd_env=trd_env, acc_id=acc_id, refresh_cache=True)
         check_ret(ret, data, ctx, "Query orders")
 
@@ -114,7 +117,9 @@ if __name__ == "__main__":
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
                         default=None, help="Security firm identifier")
+    parser.add_argument("--ctx-type", choices=list(TRADE_CTX_TYPE_CHOICES), default="SEC",
+                        help="Trade context: SEC=securities, FUTURE=futures/event contracts (same as get_accounts ctx_type)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_orders(acc_id=args.acc_id, market=args.market, trd_env=args.trd_env,
-               security_firm=args.security_firm, output_json=args.output_json)
+               security_firm=args.security_firm, ctx_type=args.ctx_type, output_json=args.output_json)

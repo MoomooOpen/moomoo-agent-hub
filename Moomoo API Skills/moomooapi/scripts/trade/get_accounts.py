@@ -2,13 +2,14 @@
 """
 Get Trading Account List
 
-Function: Query all trading accounts of the currently logged-in user
+Function: Query all trading accounts of the currently logged-in user (securities + futures merged)
 Usage: python get_accounts.py
 
 API Limits:
 - No special rate limiting
 
 Return Field Description:
+- ctx_type: Account source context SEC (OpenSecTradeContext) / FUTURE (OpenFutureTradeContext)
 - card_num: A consolidated account contains one or more business accounts (consolidated securities, consolidated futures, etc.), related to trading products
 - trdmarket_auth: List of markets the account is authorized to trade in (returned per-account; competition accounts follow contest rules)
 - acc_role: MASTER=master account, NORMAL=normal account
@@ -47,7 +48,7 @@ import os as _os
 sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..")))
 from common import (
     create_trade_context,
-    check_ret,
+    create_future_trade_context,
     safe_close,
     is_empty,
     safe_get,
@@ -71,7 +72,7 @@ _ALL_SECURITY_FIRMS = [
 ]
 
 
-def _parse_account_row(row):
+def _parse_account_row(row, ctx_type):
     """Parse a single account row into a dict."""
     trdmarket_auth_raw = safe_get(row, "trdmarket_auth", default=[])
     if isinstance(trdmarket_auth_raw, str):
@@ -95,7 +96,30 @@ def _parse_account_row(row):
         "sim_acc_type": sim_acc_type,
         "competition_acc_name": competition_acc_name,
         "jp_acc_type": format_enum(safe_get(row, "jp_acc_type", default="NONE")),
+        "ctx_type": ctx_type,
     }
+
+
+def _collect_from_context(create_ctx, firm, ctx_type, seen_acc_ids, accounts, show_disabled):
+    ctx = None
+    try:
+        ctx = create_ctx(security_firm=firm) if ctx_type == "FUTURE" else create_ctx(market="NONE", security_firm=firm)
+        ret, data = ctx.get_acc_list()
+        if ret != 0 or is_empty(data):
+            return
+        for i in range(len(data)):
+            row = data.iloc[i] if hasattr(data, "iloc") else data[i]
+            acc = _parse_account_row(row, ctx_type)
+            if acc["acc_id"] in seen_acc_ids:
+                continue
+            if not show_disabled and acc["acc_status"] == "DISABLED":
+                continue
+            seen_acc_ids.add(acc["acc_id"])
+            accounts.append(acc)
+    except Exception:
+        pass
+    finally:
+        safe_close(ctx)
 
 
 def get_accounts(output_json=False, show_disabled=False):
@@ -103,24 +127,12 @@ def get_accounts(output_json=False, show_disabled=False):
     accounts = []
 
     for firm in _ALL_SECURITY_FIRMS:
-        ctx = None
-        try:
-            ctx = create_trade_context(market="NONE", security_firm=firm)
-            ret, data = ctx.get_acc_list()
-            if ret != 0 or is_empty(data):
-                continue
-            for i in range(len(data)):
-                row = data.iloc[i] if hasattr(data, "iloc") else data[i]
-                acc = _parse_account_row(row)
-                if acc["acc_id"] not in seen_acc_ids:
-                    seen_acc_ids.add(acc["acc_id"])
-                    if not show_disabled and acc["acc_status"] == "DISABLED":
-                        continue
-                    accounts.append(acc)
-        except Exception:
-            pass
-        finally:
-            safe_close(ctx)
+        _collect_from_context(
+            create_trade_context, firm, "SEC", seen_acc_ids, accounts, show_disabled
+        )
+        _collect_from_context(
+            create_future_trade_context, firm, "FUTURE", seen_acc_ids, accounts, show_disabled
+        )
 
     if not accounts:
         if output_json:
@@ -133,11 +145,11 @@ def get_accounts(output_json=False, show_disabled=False):
         print(json.dumps({"accounts": accounts}, ensure_ascii=False))
     else:
         print("=" * 70)
-        print("Trading Account List")
+        print("Trading Account List (Securities + Futures)")
         print("=" * 70)
         for a in accounts:
             print(f"\n  Account ID: {a['acc_id']}")
-            print(f"    Type: {a['acc_type']}  Role: {a['acc_role']}  Environment: {a['trd_env']}  Firm: {a['security_firm']}")
+            print(f"    Context: {a['ctx_type']}  Type: {a['acc_type']}  Role: {a['acc_role']}  Environment: {a['trd_env']}  Firm: {a['security_firm']}")
             print(f"    Trading Market Auth: {', '.join(a['trdmarket_auth']) if a['trdmarket_auth'] else 'N/A'}")
             if a.get("sim_acc_type") and a["sim_acc_type"] != "NONE":
                 print(f"    Sim Account Type: {a['sim_acc_type']}")
@@ -149,7 +161,7 @@ def get_accounts(output_json=False, show_disabled=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get trading account list")
+    parser = argparse.ArgumentParser(description="Get trading account list (securities + futures)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     parser.add_argument("--show-disabled", action="store_true", help="Show DISABLED accounts")
     args = parser.parse_args()

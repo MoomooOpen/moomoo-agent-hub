@@ -1,6 +1,6 @@
 ---
 name: moomooapi
-description: moomoo OpenAPI trading & market data assistant. Query stock quotes, Candlesticks, snapshots, order book, tickers, time-sharing data; search quote instruments and news; resolve option shorthand codes, query option chains & expiration dates; execute buy/sell/place/cancel/modify orders; query positions/funds/accounts/orders; subscribe to real-time pushes; crypto (BTC / ETH / bitcoin / ethereum) market data and trading; indicator list and calculation (MA/MACD/RSI/KDJ/BOLL etc.); API quick reference. Automatically used when user mentions: quote, price, Candlestick, snapshot, order book, ticker, search, search quote, search news, news, notice, buy, sell, place order, cancel, trade, position, fund, account, order, moomoo, API, stock filter, plate, option, option chain, option code, strike, expiry, Call, Put, crypto, cryptocurrency, BTC, ETH, bitcoin, ethereum, pair, financials, earnings, analyst, valuation, dividend, buyback, stock split, shareholder, insider, company profile, executive, short interest, short volume, option volatility, implied volatility, IV, option exercise probability, indicator, indicator list, indicator calc, technical indicator, MA, MACD, RSI, KDJ, BOLL.
+description: moomoo OpenAPI trading & market data assistant. Query stock quotes, Candlesticks, snapshots, order book, tickers, time-sharing data; search quote instruments and news; resolve option shorthand codes, query option chains & expiration dates; execute buy/sell/place/cancel/modify orders; query positions/funds/accounts/orders; subscribe to real-time pushes; crypto (BTC / ETH / bitcoin / ethereum) market data and trading; event contract (Event Contract / EC. / prediction contract / YES NO contract / competition / election / Kalshi; order params amount / pred_side / quote_id; combo RFQ request_combo_quotes / get_valid_combo_list); indicator list and calculation (MA/MACD/RSI/KDJ/BOLL etc.); API quick reference. Automatically used when user mentions: quote, price, Candlestick, snapshot, order book, ticker, search, search quote, search news, news, notice, buy, sell, place order, cancel, trade, position, fund, account, order, moomoo, API, stock filter, plate, option, option chain, option code, strike, expiry, Call, Put, crypto, cryptocurrency, BTC, ETH, bitcoin, ethereum, pair, financials, earnings, analyst, valuation, dividend, buyback, stock split, shareholder, insider, company profile, executive, short interest, short volume, option volatility, implied volatility, IV, option exercise probability, event contract, prediction market, prediction, prediction contract, EC, EC., pred_side, amount, quote_id, request_combo_quotes, get_valid_combo_list, combo RFQ, YES NO contract, competition contract, election contract, Kalshi, indicator, indicator list, indicator calc, technical indicator, MA, MACD, RSI, KDJ, BOLL.
 allowed-tools: Bash Read Write Edit
 metadata:
   version: 0.1.1
@@ -375,7 +375,20 @@ skills/moomooapi/
     │   ├── get_fed_watch_dot_plot.py              # FedWatch dot plot
     │   ├── get_heat_map_data.py                   # Heat map data
     │   ├── get_rise_fall_distribution.py          # Rise/fall distribution
-    │   └── get_rating_change.py                   # Rating change
+    │   ├── get_rating_change.py                   # Rating change
+    │   ├── get_event_contract_category.py                 # Event contract category list
+    │   ├── filter_competition.py                          # Event contract competition filter
+    │   ├── get_event_contract_series_list.py              # Event contract series list
+    │   ├── get_event_contract_event_list.py               # Event contract event list
+    │   ├── get_event_contract.py                          # Event contract contract list
+    │   ├── get_event_contract_milestone_list.py           # Event contract milestone list
+    │   ├── get_valid_combo_list.py                        # Valid combo event list (with mvc)
+    │   ├── request_combo_quotes.py                        # Combo RFQ
+    │   ├── get_event_contract_snapshot.py                 # Event contract snapshot
+    │   ├── get_event_contract_order_book.py               # Event contract order book (subscribe required)
+    │   ├── get_event_contract_kline.py                    # Event contract K-line (subscribe required)
+    │   ├── get_event_contract_ticker.py                   # Event contract ticker (subscribe required)
+    │   └── request_history_event_contract_kline.py        # Event contract historical K-line (no subscription needed)
     ├── trade/                         # Trading scripts
     │   ├── get_accounts.py            # Account list
     │   ├── get_portfolio.py           # Positions & funds
@@ -412,7 +425,13 @@ skills/moomooapi/
         ├── push_orderbook.py          # Receive order book pushes
         ├── push_ticker.py             # Receive tick-by-tick pushes
         ├── push_rt_data.py            # Receive time-sharing pushes
-        └── push_option_event.py       # Receive option event pushes
+        ├── push_option_event.py       # Receive option event pushes
+        ├── subscribe_event_contract.py        # Subscribe event contract
+        ├── unsubscribe_event_contract.py      # Unsubscribe event contract
+        ├── unsubscribe_all_event_contract.py  # Unsubscribe all event contract subscriptions
+        ├── push_event_contract_orderbook.py   # Receive event contract order book push
+        ├── push_event_contract_kline.py       # Receive event contract K-line push
+        └── push_event_contract_ticker.py      # Receive event contract ticker push
 ```
 
 ### Script Path Lookup Rules
@@ -1311,13 +1330,13 @@ When the user asks about "my accounts" or "account list":
 ```bash
 python skills/moomooapi/scripts/trade/get_accounts.py [--json]
 ```
-The script automatically iterates through all `SecurityFirm` enum values (FUTUSECURITIES, FUTUINC, FUTUSG, FUTUAU, FUTUCA, FUTUJP, FUTUMY, etc.), deduplicates by `acc_id`, and merges results to ensure live trading accounts under different brokerages are all retrieved.
+The script iterates through all `SecurityFirm` values and fetches accounts from both **securities** (`OpenSecTradeContext`) and **futures** (`OpenFutureTradeContext`), then deduplicates by `acc_id`. JSON field `ctx_type` is `SEC` or `FUTURE`.
 
 > **Tip**: The last 4 digits of a live account's `uni_card_num` match the account number shown in the moomoo app and desktop client. When displaying live account info, **prefer showing `uni_card_num`** (rather than `acc_id`), as this is the number users recognize from the app. Paper trading accounts do not need this field.
 
 > **Account fetching issue**: `create_trade_context()` defaults to `filter_trdmarket=TrdMarket.NONE` (no market filtering), but if you manually create `OpenSecTradeContext` with a specific market (e.g., `TrdMarket.US`, `TrdMarket.HK`), some accounts may be filtered out. Change `filter_trdmarket` to `TrdMarket.NONE` and re-fetch to get all accounts.
 
-JSON output includes a `trdmarket_auth` field indicating the markets the account has trading permissions for (e.g., `["HK", "US", "HKCC", "SG", "MY", "JP"]`); the `acc_role` field indicates the account role (e.g., `MASTER` for the primary account). When placing orders, select an account where `trdmarket_auth` includes the target market and `acc_role` is not `MASTER`.
+JSON output includes a `trdmarket_auth` field indicating trading permissions (e.g., `["HK", "US", "HKCC", "SG", "MY", "JP"]`; futures/event contracts may also include `FUTURES`, `PREDICTION`, etc.); `acc_role` indicates role (e.g. `MASTER`). When placing orders, select an account whose `trdmarket_auth` includes the target market and `acc_role` is not `MASTER`. For **event contracts**, pick `ctx_type=FUTURE`, live env, non-MASTER, with `PREDICTION` in `trdmarket_auth`.
 
 #### Singapore / Malaysia / Japan Markets (SG / MY / JP)
 
@@ -1441,6 +1460,113 @@ JP order rules:
 - When the user requests a JP trade without specifying the sub-account, default to `JP_TOKUTEI` (most common for retail) or use AskUserQuestion to confirm.
 
 
+
+## Event Contract Commands (Event Contract)
+
+Event contracts are YES/NO binary prediction contracts on future events (elections, economic data, sports, etc.). Contract code format is `EC.xxx` (e.g. `EC.KXODIMATCH-26JUL140600INDENG-IND`). Full call chain:
+
+```
+category(get_event_contract_category) -> filter_competition -> Series -> Event -> Contract -> snapshot/orderbook/kline/ticker
+```
+
+**Hard constraint (subscribe before querying)**: `get_event_contract_order_book` / `get_event_contract_kline` / `get_event_contract_ticker` require subscribing to the corresponding type (`SubType.ORDER_BOOK` / `K_DAY` etc. / `TICKER`) first; otherwise an error is returned. These scripts auto-subscribe by default (use `--no-auto-subscribe` to skip). `request_history_event_contract_kline` (historical K-line) and `get_event_contract_snapshot` require no subscription.
+
+**K-line type limit**: Event Contract K-line only supports `K_1M`/`K_5M`/`K_60M`/`K_DAY`; others raise an error.
+
+**Pagination**: `event_list` / `get_event_contract` / `milestone_list` / `valid_combo_list` return only the first page by default; to continue, pass the previous `next_page` via `--next-page`.
+
+**SDK note**: Event Contract requires an SDK version that supports it. If the current moomoo-api does not support it, the scripts print a clear upgrade hint and exit (no crash).
+
+### Get Event Contract Category
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract_category.py [--category Sports] [--json]
+```
+
+### Filter Competition
+```bash
+python skills/moomooapi/scripts/quote/filter_competition.py --category Sports [--tag Baseball] [--json]
+```
+- competition names can be passed as `--competition` to `get_event_contract_milestone_list`
+
+### Get Event Contract Series List
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract_series_list.py --category Sports [--tag Football] [--json]
+```
+
+### Get Event Contract Event List
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract_event_list.py EC.KXUFCVICROUND.SERIES [--count 20] [--status EVENT_ACTIVE] [--next-page KEY] [--json]
+```
+
+### Get Event Contract (Contract) List
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract.py EC.KXUFCVICROUND-26JUL11SAIPIM.EVENT [--count 20] [--next-page KEY] [--json]
+```
+- the returned `contract_code` (`EC.xxx`) can be used as the `code` for snapshot/orderbook/kline/ticker
+
+### Get Event Contract Milestone List
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract_milestone_list.py [--category Sports] [--competition "FIFA World Cup"] [--related-event EC.xxx] [--count 20] [--json]
+```
+
+### Get Valid Combo Event List
+```bash
+python skills/moomooapi/scripts/quote/get_valid_combo_list.py [--category Sports] [--count 20] [--json]
+```
+- the returned `mvc` must be passed through to `request_combo_quotes`
+
+### Combo RFQ
+```bash
+python skills/moomooapi/scripts/quote/request_combo_quotes.py '[{"code":"EC.xxx-FRA","trd_side":"BUY","qty_ratio":1,"pred_side":"YES"},{"code":"EC.xxx-ENG","trd_side":"BUY","qty_ratio":1,"pred_side":"YES"}]' --mvc KALSHI.KXMVECROSSCATEGORY-R [--json]
+```
+- each leg: `code` (required) / `trd_side` (BUY/SELL/SELL_SHORT/BUY_BACK, required) / `qty_ratio` (required) / `pred_side` (YES/NO, required)
+- at least 2 legs; can come from different events; `mvc` is passed through from `get_valid_combo_list`
+- `quote_id` has a time limit; place the order soon via `place_combo_order.py` with `quote_id`
+
+### Get Event Contract Snapshot
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract_snapshot.py EC.KXODIMATCH-26JUL140600INDENG-IND [--json]
+```
+- snapshot only returns the first bid/ask level; for multi-level depth use `get_event_contract_order_book`
+
+### Get Event Contract Order Book
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract_order_book.py EC.KXODIMATCH-26JUL140600INDENG-IND [--num 5] [--json]
+```
+
+### Get Event Contract K-line
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract_kline.py EC.KXODIMATCH-26JUL140600INDENG-IND --ktype K_DAY --pre-side YES [--kline-source ORDER_BOOK_YES] [--max-count 10] [--json]
+```
+
+### Get Event Contract Ticker
+```bash
+python skills/moomooapi/scripts/quote/get_event_contract_ticker.py EC.KXODIMATCH-26JUL140600INDENG-IND [--count 30] [--json]
+```
+
+### Fetch Event Contract Historical K-line
+```bash
+python skills/moomooapi/scripts/quote/request_history_event_contract_kline.py EC.KXNFLAFCCHAMP-27-CIN --start 2026-07-05 --end 2026-07-09 --pre-side YES --ktype K_DAY [--max-count 10] [--json]
+```
+
+### Subscribe Event Contract
+```bash
+python skills/moomooapi/scripts/subscribe/subscribe_event_contract.py EC.KXODIMATCH-26JUL140600INDENG-IND --types ORDER_BOOK TICKER K_DAY [--kline-source ORDER_BOOK_YES] [--json]
+```
+- to receive pushes, use the corresponding push scripts (`push_event_contract_*`) which set the handler, or register `EventContract*HandlerBase` yourself
+
+### Unsubscribe Event Contract
+```bash
+python skills/moomooapi/scripts/subscribe/unsubscribe_event_contract.py EC.xxx --types TICKER [--json]
+python skills/moomooapi/scripts/subscribe/unsubscribe_all_event_contract.py [--json]
+```
+
+### Receive Event Contract Pushes
+```bash
+python skills/moomooapi/scripts/subscribe/push_event_contract_orderbook.py EC.xxx --duration 60 [--json]
+python skills/moomooapi/scripts/subscribe/push_event_contract_kline.py EC.xxx --ktype K_DAY [--duration 300] [--json]
+python skills/moomooapi/scripts/subscribe/push_event_contract_ticker.py EC.xxx --duration 60 [--json]
+```
 
 ## F10 Fundamentals / Research / Corporate Actions / Shareholders / Company Info
 
@@ -2097,31 +2223,50 @@ python skills/moomooapi/scripts/quote/get_option_strategy_analysis.py [--json] l
 ### Get Positions & Funds
 When the user asks about "positions", "funds", or "my stocks":
 ```bash
-python skills/moomooapi/scripts/trade/get_portfolio.py [--market HK] [--trd-env SIMULATE] [--acc-id 12345] [--security-firm FUTUSECURITIES] [--json]
+python skills/moomooapi/scripts/trade/get_portfolio.py [--market HK] [--trd-env SIMULATE] [--acc-id 12345] [--ctx-type SEC|FUTURE] [--security-firm FUTUSECURITIES] [--json]
 ```
 - `--market`: US, HK, HKCC, CN, SG, MY, JP
 - `--trd-env`: REAL, SIMULATE (default SIMULATE)
+- `--ctx-type`: `SEC` (securities, default) or `FUTURE` (futures/event-contract accounts; same as `get_accounts.ctx_type`)
 - `--show-option-strategy-view`: query positions in option strategy view (`position_list_query(show_option_strategy_view=True)`)
 - `position_list_query` response adds: `combo_id`, `strategy_type`, `position_type`, `acc_id`, `jp_acc_type`
+
+> For event-contract/futures account portfolio, orders, fills, cancel/modify, cash flow, etc., pass `--ctx-type FUTURE` (align with `get_accounts.ctx_type`). Scripts that take an `EC.` code (e.g. `get_max_trd_qtys`, `get_history_orders --code`) auto-switch to the futures context.
 
 > Full position & funds field mapping (aligned with moomoo App) is in `docs/FIELD_MAPPING.md`. **Key rules**: Use `unrealized_pl` / `pl_ratio_avg_cost` (average cost basis) for P&L. Do NOT use `cost_price` / `pl_val` (diluted cost basis). Multi-currency aggregation must use `accinfo_query(currency=target_currency)` for account-level data.
 
 ### Place Order
-When the user asks to "buy", "sell", or "place an order":
+When the user asks to "buy", "sell", "place an order", or "event contract / prediction market order":
 ```bash
-python skills/moomooapi/scripts/trade/place_order.py --code US.AAPL --side BUY --quantity 10 --price 150.0 [--order-type NORMAL] [--trd-env SIMULATE] [--confirmed] [--security-firm FUTUSECURITIES] [--json]
-```
-- `--code`: Stock code (required), the script automatically infers the market from the prefix, no need to specify `--market`
-- `--side`: BUY/SELL (required)
-- `--quantity`: Quantity (required)
-- `--price`: Price (required for limit orders, not needed for market orders)
-- `--order-type`: NORMAL (limit order) / MARKET (market order)
-- `--session`: US stock trading session, options: NONE/RTH/ETH/OVERNIGHT/ALL (only for US stocks)
-- `--confirmed`: Must be passed for live trading (hard constraint — without it, the script returns an order summary and exits)
-- **Always confirm code, direction, quantity, and price with the user before placing an order**
+# Stocks / options etc.
+python skills/moomooapi/scripts/trade/place_order.py --code US.AAPL --side BUY --quantity 10 --price 150.0 [--order-type NORMAL] [--trd-env SIMULATE] [--time-in-force DAY] [--expire-time 2026-12-31] [--confirmed] [--security-firm FUTUSECURITIES] [--json]
 
-### Place Combo Order (Option Combo/Strategy)
-When the user asks to place an "option combo order", "strategy combo order", or "multi-leg combo order":
+# Event contracts (code EC.xxx; live only + pred_side required; amount vs quantity mutually exclusive, amount preferred)
+python skills/moomooapi/scripts/trade/place_order.py --code EC.xxx --side BUY --amount 100 --price 0.55 --pred-side YES --trd-env REAL --acc-id {acc_id} --confirmed [--security-firm FUTUSECURITIES] [--json]
+```
+- `--code`: Instrument code (required). Equities use market prefix; **event contracts are `EC.xxx` (no US./HK. prefix)** and the script uses `OpenFutureTradeContext`
+- `--side`: BUY/SELL (required)
+- `--quantity`: Quantity; mutually exclusive with `--amount`. If both are set, **amount wins** and qty is forced to 0
+- `--amount`: Order amount; **event contracts only**; when set, SDK receives `qty=0`
+- `--pred-side`: YES/NO; **required for event contracts** (whether using quantity or amount)
+- `--price`: Price (required for limit orders); event contracts are usually 0.01~0.99
+- `--order-type`: NORMAL (limit) / MARKET
+- `--time-in-force`: default DAY; for `GTD`, pass `--expire-time yyyy-MM-dd`
+- `--expire-time`: only valid when `time_in_force=GTD`
+- `--session`: US stock session NONE/RTH/ETH/OVERNIGHT/ALL (US only)
+- `--confirmed`: Required for live trading (hard constraint — without it, preview and exit)
+- **Always confirm code, side, quantity/amount, price (and pred_side for event contracts) with the user**
+
+#### Event Contract Hard Constraints
+- Live only (`--trd-env REAL`); `SIMULATE` exits with an error (paper trading does not support event contracts)
+- Futures account context; `trdmarket_auth` must include **`PREDICTION`**, otherwise report that event contracts are unsupported
+- Select accounts via `get_accounts.py --json`: `ctx_type=FUTURE`, `trd_env=REAL`, non-`MASTER`, and `trdmarket_auth` contains `PREDICTION`
+- Regular futures still follow "Futures Trading Commands" (generate `OpenFutureTradeContext` code). **Event contracts can be placed via this script**
+
+### Place Combo Order (Option Combo/Strategy / Event-Contract Combo)
+When the user asks to place an "option combo order", "strategy combo order", "multi-leg combo order", or "event-contract combo":
+
+**Option combo:**
 ```bash
 python skills/moomooapi/scripts/trade/place_combo_order.py \
   '[{"code":"US.AAPL260529C302500","trd_side":"BUY","qty_ratio":1},{"code":"US.AAPL","trd_side":"SELL","qty_ratio":100}]' \
@@ -2134,9 +2279,42 @@ python skills/moomooapi/scripts/trade/place_combo_order.py \
   - close legs: use `SELL` / `BUYBACK` (must pass `position_id`)
   - close-leg `position_id` must come from `position_list_query(show_option_strategy_view=True)` result (or this skill's `get_portfolio.py --show-option-strategy-view`)
 - **`--price` pricing**: prefer `bid1`/`ask1` from `get_option_strategy_analysis.py` for the same legs (buy usually near `ask1`, sell near `bid1`); **do not** derive combo price from per-leg `get_snapshot.py`
+- `--quote-id`: **ignored** for option combos (silently not passed to SDK)
 - `--price` and `--quantity` are required; leg actual qty = `quantity * qty_ratio`
 - `--time-in-force` defaults to `DAY`; for `GTD`, pass `--expire-time yyyy-MM-dd`
 - `--confirmed`: required for live combo order submit (without it, script returns preview only)
+
+**Event-contract combo (every leg must be `EC.`):**
+```bash
+# 1) Agent generates Python: get_valid_combo_list → mvc
+# 2) Agent generates Python: request_combo_quotes(combo_leg_list, mvc) → quote_id + bid/ask
+# 3) Call this script with price + quote_id from step 2
+python skills/moomooapi/scripts/trade/place_combo_order.py \
+  '[{"code":"EC.xxx","trd_side":"BUY","qty_ratio":1,"pred_side":"YES"},{"code":"EC.yyy","trd_side":"BUY","qty_ratio":1,"pred_side":"YES"}]' \
+  --price {ask_or_bid} --quantity 1 --quote-id {quote_id} --trd-env REAL --acc-id {acc_id} --confirmed [--security-firm FUTUINC]
+```
+
+#### Event-Contract Combo Hard Constraints
+1. **Leg validity**: every leg `code` must start with `EC.`; mixing EC. and non-EC → script errors with invalid combo
+2. **Same side**: all legs must share the same `trd_side`; otherwise error. Price from **first leg**: `BUY` → `ask_price`, `SELL` → `bid_price`
+3. **Each leg requires** `pred_side`: `YES` / `NO`
+4. **RFQ chain** (no dedicated skill yet — Agent generates Python for steps 1–2):
+   - `OpenQuoteContext.get_valid_combo_list()` → **`mvc` (required)** and optional combo list
+   - `OpenQuoteContext.request_combo_quotes(combo_leg_list, mvc)` → **`quote_id`**, `bid_price`, `ask_price`; retry briefly if `should_retry=True`
+   - **`--price` must** come from that RFQ ask/bid; **`--quote-id` is required**
+5. **Trade context**: script uses `OpenFutureTradeContext`; `--trd-env REAL` only; account `trdmarket_auth` must include **`PREDICTION`**; paper trading exits with error
+6. Confirm legs, side, pred_side, qty, price, and quote_id with the user before live submit
+
+RFQ reference (Agent may adapt and run):
+```python
+from moomoo import *
+qot_ctx = OpenQuoteContext(security_firm=SecurityFirm.FUTUINC)
+ret, combo_df, mvc, _ = qot_ctx.get_valid_combo_list()  # mvc required downstream
+# Build ComboLeg with code/trd_side/qty_ratio/pred_side; all trd_side identical
+ret, quote = qot_ctx.request_combo_quotes(combo_leg_list, mvc)
+# quote['quote_id'], quote['ask_price'], quote['bid_price']; honor should_retry
+qot_ctx.close()
+```
 - **Always confirm combo legs, direction, quantity, and price before live submission**
 
 ### Query Combo Order Trading Info
@@ -2257,7 +2435,7 @@ python skills/moomooapi/scripts/trade/get_history_order_fill_list.py [--acc-id 1
 
 > Full futures trading documentation (contract codes, account queries, order flow, positions, cancellation, etc.) is in `docs/FUTURES_TRADING.md`.
 
-**Key point**: Futures must use `OpenFutureTradeContext` (not `OpenSecTradeContext`). Existing trading scripts are not applicable to futures — generate Python code directly. Common SG futures main contracts: `SG.CNmain` (A50), `SG.NKmain` (Nikkei).
+**Key point**: Futures must use `OpenFutureTradeContext` (not `OpenSecTradeContext`). Ordinary futures orders may still need generated Python code. **Script path**: event contracts (`EC.`) via `place_order.py` / `place_combo_order.py`; query/cancel/modify for futures/EC accounts with `--ctx-type FUTURE` (or auto-switch on `EC.` codes). Common SG futures main contracts: `SG.CNmain` (A50), `SG.NKmain` (Nikkei).
 
 ---
 
@@ -2557,7 +2735,7 @@ pip install --upgrade "moomoo-api>=10.5.6508"
 7. **Live orders require two-step execution (hard constraint)**: `place_order.py` and `place_combo_order.py` enforce the `--confirmed` parameter in the live environment. The first call without `--confirmed` returns an order summary and exits (exit code 2); after confirming correctness, the second call with `--confirmed` actually places the order. You should also use AskUserQuestion to confirm order details with the user first. If the API returns an unlock error, prompt the user to manually unlock the trade password in the OpenD GUI. **Exception**: When the user requests running their own strategy script, no secondary confirmation is needed before each order, as the order logic in the strategy script is controlled by the user
 8. All scripts support the `--json` parameter for easy parsing
 9. For unfamiliar APIs, consult this skill's API Quick Reference first
-10. **Futures trading must use `OpenFutureTradeContext`**: Existing trading scripts use `OpenSecTradeContext` and are not applicable to futures. Futures order placement, position queries, cancellations, etc. require directly generating Python code, following the "Futures Trading Commands" section
+10. **Futures trading must use `OpenFutureTradeContext`**: Regular futures placement may still need generated Python code (see "Futures Trading Commands"). **Supported via scripts**: event contracts (`EC.`) via `place_order.py` / `place_combo_order.py`; portfolio/orders/fills/cancel/modify for futures/EC accounts with `--ctx-type FUTURE` (or auto-switch on `EC.` codes); account must have `PREDICTION` for EC live trading
 11. **Backtesting uses headless mode**: When the user requests backtesting or running backtest scripts, do not use any GUI components; use headless backtest mode, saving charts as files rather than displaying popup windows
 12. **Check limits before calling APIs** — see "API Limits" section above for quota and rate limit details
 13. **Combo option order book price (hard constraint)**: multi-leg/strategy combo bid/ask and combo order `--price` **must** use `get_option_strategy_analysis.py` (`bid1`/`ask1`); **do not** call `get_snapshot.py` per leg and manually net prices

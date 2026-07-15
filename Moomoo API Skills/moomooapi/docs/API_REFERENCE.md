@@ -65,6 +65,29 @@ get_future_info(code_list)  -- Get futures contract info
 get_warrant(stock_owner='', req=None)  -- Get warrants/CBBCs
 ```
 
+### Event Contract (13 queries + 3 subscriptions + 3 push Handlers)
+
+Contract code `EC.xxx`; YES/NO binary prediction contracts. Subscribe via `subscribe_event_contract` to the corresponding type before querying order book/real-time K-line/ticker; historical K-line (`request_history_event_contract_kline`) needs no subscription and uses the historical K-line quota; K-line only supports K_1M/K_5M/K_60M/K_DAY.
+
+```
+get_event_contract_category(category=None)  -- Event contract category list
+filter_competition(category=None, tag=None)  -- Competition filter (competition names + full scope set)
+get_event_contract_series_list(category=None, tag=None)  -- Series list
+get_event_contract_event_list(series_code, status=None, next_page=None, count=None)  -- Event list (paginated)
+get_event_contract(event_code, next_page=None, count=None)  -- Contract list (returns dict{contract_list, recommend_contracts}, paginated)
+get_event_contract_milestone_list(category=None, competition=None, related_event=None, next_page=None, count=None)  -- Milestone list (paginated)
+get_valid_combo_list(category=None, competition=None, series=None, next_page=None, count=None)  -- Valid combo event list (returns data, mvc, next_page)
+request_combo_quotes(combo_leg_list, mvc)  -- Combo RFQ (combo_leg_list is a ComboLeg list, pred_side required; mvc passed through)
+get_event_contract_snapshot(code_list)  -- Event contract snapshot (no subscription required)
+get_event_contract_order_book(code, num=10)  -- Event contract order book (requires ORDER_BOOK subscription; returns dict{yes_bids/asks, no_bids/asks})
+get_event_contract_kline(code, pre_side=None, ktype=KLType.K_DAY, kline_source=None, max_count=1000)  -- Event contract K-line (requires corresponding K-line subscription)
+get_event_contract_ticker(code, count=30)  -- Event contract ticker (requires TICKER subscription)
+request_history_event_contract_kline(code, start=None, end=None, pre_side=None, ktype=KLType.K_DAY, kline_source=None, max_count=1000, page_req_key=None)  -- Event contract historical K-line (no subscription needed; auto-paginated)
+subscribe_event_contract(code_list, subtype_list, kline_source_list=None, is_first_push=True, subscribe_push=True)  -- Subscribe event contract
+unsubscribe_event_contract(code_list, subtype_list, kline_source_list=None)  -- Unsubscribe (by dimension)
+unsubscribe_all_event_contract()  -- Unsubscribe all event contracts on the current connection
+```
+
 ### Capital (2)
 
 ```
@@ -197,9 +220,9 @@ This section summarizes crypto-specific parameter/behavior differences relative 
 
 ---
 
-## Push Handlers (9)
+## Push Handlers (12)
 
-### Market Data Push (7)
+### Market Data Push (10)
 
 ```
 StockQuoteHandlerBase   -- Quote push callback
@@ -209,6 +232,9 @@ TickerHandlerBase       -- Tick-by-tick push callback
 RTDataHandlerBase       -- Time-sharing push callback
 BrokerHandlerBase       -- Broker queue push callback
 PriceReminderHandlerBase -- Price alert push callback
+EventContractOrderBookHandlerBase  -- Event contract order book push callback (requires subscribe_event_contract ORDER_BOOK)
+EventContractKlineHandlerBase      -- Event contract K-line push callback (requires corresponding K-line subscription)
+EventContractTickerHandlerBase     -- Event contract ticker push callback (requires TICKER subscription)
 ```
 
 ### Trade Push (2)

@@ -232,6 +232,39 @@ from moomoo import (
         OrderBookType,
 )
 
+# Event Contract enums and data class (only provided by SDK versions that support EC;
+# older moomoo-api versions degrade to None and assert_event_contract_support() reports it)
+try:
+    from moomoo import (
+        ECStatus,
+        ECContractType,
+        ECFrequency,
+        ECMilestoneType,
+        ECKlineSource,
+        PredSide,
+        ComboLeg,
+    )
+except ImportError:
+    ECStatus = None
+    ECContractType = None
+    ECFrequency = None
+    ECMilestoneType = None
+    ECKlineSource = None
+    PredSide = None
+    ComboLeg = None
+
+# Event Contract push Handlers (same version guard)
+try:
+    from moomoo import (
+        EventContractKlineHandlerBase,
+        EventContractOrderBookHandlerBase,
+        EventContractTickerHandlerBase,
+    )
+except ImportError:
+    EventContractKlineHandlerBase = None
+    EventContractOrderBookHandlerBase = None
+    EventContractTickerHandlerBase = None
+
 try:
     from moomoo import TradeDateMarket
 except ImportError:
@@ -245,9 +278,19 @@ except ImportError:
     OpenCryptoTradeContext = None
 
 try:
+    from moomoo import OpenFutureTradeContext
+except ImportError:
+    OpenFutureTradeContext = None
+
+try:
     from moomoo import TimeInForce
 except ImportError:
     TimeInForce = None
+
+try:
+    from moomoo import PredSide
+except ImportError:
+    PredSide = None
 
 
 # ============================================================
@@ -317,6 +360,63 @@ def create_trade_context(market=None, security_firm=None):
         default_firm = get_default_security_firm()
         kwargs["security_firm"] = default_firm if default_firm is not None else SecurityFirm.NONE
     return OpenSecTradeContext(**kwargs)
+
+
+def create_future_trade_context(security_firm=None):
+    """Create futures trade context (event contracts / futures; no filter_trdmarket)"""
+    if OpenFutureTradeContext is None:
+        raise RuntimeError("Current SDK does not support OpenFutureTradeContext; please upgrade moomoo-api")
+    host, port = get_opend_config()
+    _check_opend_alive(host, port)
+    kwargs = dict(host=host, port=port)
+    if _sdk_supports_ai_type:
+        kwargs["ai_type"] = 1
+    if security_firm is not None:
+        kwargs["security_firm"] = security_firm
+    else:
+        default_firm = get_default_security_firm()
+        kwargs["security_firm"] = default_firm if default_firm is not None else SecurityFirm.NONE
+    return OpenFutureTradeContext(**kwargs)
+
+
+def is_event_contract_code(code):
+    """Event contract codes start with EC. (no market prefix)"""
+    return bool(code) and str(code).strip().upper().startswith("EC.")
+
+
+TRADE_CTX_TYPE_CHOICES = ("SEC", "FUTURE")
+
+
+def normalize_trade_ctx_type(ctx_type=None, code=None, codes=None):
+    """Resolve trade context type: SEC=securities, FUTURE=futures/event contracts.
+
+    Any EC. code always uses FUTURE; otherwise honor explicit ctx_type (default SEC).
+    """
+    has_ec = bool(code and is_event_contract_code(code))
+    if not has_ec and codes:
+        for c in codes:
+            code_val = c if isinstance(c, str) else getattr(c, "code", None)
+            if code_val and is_event_contract_code(code_val):
+                has_ec = True
+                break
+    if has_ec:
+        return "FUTURE"
+    if ctx_type is not None and str(ctx_type).strip() != "":
+        key = str(ctx_type).strip().upper()
+        if key in ("FUTURE", "FUTURES"):
+            return "FUTURE"
+        if key == "SEC":
+            return "SEC"
+        raise ValueError(f"Invalid ctx_type: {ctx_type}; expected SEC or FUTURE")
+    return "SEC"
+
+
+def create_sec_or_future_trade_context(market=None, security_firm=None, ctx_type="SEC", code=None, codes=None):
+    """Create securities or futures trade context by ctx_type (same as get_accounts.ctx_type)"""
+    resolved = normalize_trade_ctx_type(ctx_type=ctx_type, code=code, codes=codes)
+    if resolved == "FUTURE":
+        return create_future_trade_context(security_firm=security_firm)
+    return create_trade_context(market, security_firm=security_firm)
 
 
 # Crypto trading context supports only FUTUSECURITIES (HK), FUTUINC (US), FUTUSG (SG)
@@ -554,6 +654,121 @@ def parse_subtypes(subtype_names):
             raise ValueError(f"Unsupported subscription type: {name}")
         subtypes.append(getattr(SubType, key))
     return subtypes
+
+
+# ============================================================
+# Event Contract helpers
+# ============================================================
+
+# Event Contract only supports these 4 KLType values
+EC_KLTYPE_CHOICES = ["K_1M", "K_5M", "K_60M", "K_DAY"]
+
+
+def _ec_support_error():
+    """Return the error message indicating the current SDK does not support Event Contract"""
+    try:
+        import moomoo as _moomoo
+        cur = getattr(_moomoo, "__version__", "unknown")
+    except ImportError:
+        cur = "unknown"
+    return (
+        f"The current moomoo-api {cur} does not support Event Contract. "
+        "Please upgrade the SDK: pip install --upgrade moomoo-api, then retry."
+    )
+
+
+def assert_event_contract_support(ctx=None, output_json=None):
+    """Check whether the current SDK supports Event Contract interfaces; exit with a hint if not.
+
+    :param ctx: an opened quote context (used to detect method presence); when None, check enum import
+    :param output_json: whether to emit the error as JSON (None -> infer from --json arg)
+    """
+    supported = (ECStatus is not None) and (ComboLeg is not None)
+    if ctx is not None:
+        supported = supported and hasattr(ctx, "get_event_contract_category")
+    if supported:
+        return
+    if output_json is None:
+        try:
+            output_json = "--json" in sys.argv
+        except Exception:
+            output_json = False
+    msg = _ec_support_error()
+    if output_json:
+        print(json.dumps({"error": msg}, ensure_ascii=False))
+    else:
+        print(f"Error: {msg}")
+    sys.exit(1)
+
+
+def parse_pred_side(name):
+    """Parse event-contract side string -> PredSide enum (YES/NO); raise ValueError if invalid"""
+    assert_event_contract_support()
+    if name is None or str(name).strip() == "":
+        return None
+    key = str(name).strip().upper()
+    if not hasattr(PredSide, key):
+        raise ValueError(f"Invalid pred side: {name}, must be YES or NO")
+    return getattr(PredSide, key)
+
+
+def parse_ec_kline_source(name):
+    """Parse event-contract K-line source string -> ECKlineSource enum (ORDER_BOOK_YES); None returns None"""
+    assert_event_contract_support()
+    if name is None or str(name).strip() == "":
+        return None
+    key = str(name).strip().upper()
+    if not hasattr(ECKlineSource, key):
+        raise ValueError(f"Invalid kline source: {name}, allowed: ORDER_BOOK_YES")
+    return getattr(ECKlineSource, key)
+
+
+def parse_ec_status(name):
+    """Parse event-contract status string -> ECStatus enum (e.g. EVENT_ACTIVE); None returns None"""
+    assert_event_contract_support()
+    if name is None or str(name).strip() == "":
+        return None
+    key = str(name).strip().upper()
+    if not hasattr(ECStatus, key):
+        raise ValueError(f"Invalid EC status: {name}, allowed: " + ECStatus.get_all_keys())
+    return getattr(ECStatus, key)
+
+
+def ensure_event_contract_subscribed(ctx, code, sub_type, output_json=None,
+                                     kline_source_list=None, action="Subscribe event contract"):
+    """Subscribe an event contract type; silently skip if already subscribed, otherwise print error and exit.
+
+    Shared by get_event_contract_order_book/kline/ticker
+    for auto-subscription before querying, avoiding duplicated subscription blocks.
+
+    :param ctx: an opened quote context
+    :param code: event contract code
+    :param sub_type: SubType enum (ORDER_BOOK/TICKER/K_*)
+    :param output_json: whether to emit errors as JSON (None -> infer from --json arg)
+    :param kline_source_list: K-line source list (ECKlineSource enum), passed through when
+                              subscribing to K-line types, kept consistent with the query's
+                              kline_source; not passed for non-K-line types
+    :param action: action name used in the error message
+    """
+    if output_json is None:
+        try:
+            output_json = "--json" in sys.argv
+        except Exception:
+            output_json = False
+    kwargs = {}
+    if kline_source_list:
+        kwargs["kline_source_list"] = kline_source_list
+    ret, err = ctx.subscribe_event_contract([code], [sub_type], **kwargs)
+    if ret == RET_OK:
+        return
+    # Already subscribed is not fatal; real permission/account issues are caught by check_ret later
+    if "already" in str(err).lower() or "已订阅" in str(err):
+        return
+    if output_json:
+        print(json.dumps({"error": f"{action} failed: {err}"}, ensure_ascii=False))
+    else:
+        print(f"{action} failed: {err}")
+    sys.exit(1)
 
 
 # ============================================================

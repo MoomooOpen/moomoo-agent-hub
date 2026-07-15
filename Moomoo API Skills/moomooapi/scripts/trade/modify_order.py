@@ -22,7 +22,9 @@ import sys
 import os as _os
 sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..")))
 from common import (
-    create_trade_context,
+    create_sec_or_future_trade_context,
+    normalize_trade_ctx_type,
+    TRADE_CTX_TYPE_CHOICES,
     parse_trd_env,
     TRD_MARKET_CLI_CHOICES,
     parse_security_firm,
@@ -52,9 +54,10 @@ def _audit_log(entry):
 
 
 def modify_order(order_id, price=None, quantity=None, adjust_limit=0,
-                 acc_id=None, market=None, trd_env=None, security_firm=None, output_json=False):
+                 acc_id=None, market=None, trd_env=None, security_firm=None, ctx_type="SEC", output_json=False):
     acc_id = acc_id or get_default_acc_id()
     trd_env = parse_trd_env(trd_env) if trd_env else get_default_trd_env()
+    ctx_type = normalize_trade_ctx_type(ctx_type)
 
     if price is None and quantity is None:
         msg = "At least one of --price or --quantity must be specified"
@@ -90,7 +93,7 @@ def modify_order(order_id, price=None, quantity=None, adjust_limit=0,
 
     ctx = None
     try:
-        ctx = create_trade_context(market, security_firm=parse_security_firm(security_firm))
+        ctx = create_sec_or_future_trade_context(market, security_firm=parse_security_firm(security_firm), ctx_type=ctx_type)
 
         # Auto-complete: retrieve missing price or quantity from the original order
         if price is None or quantity is None:
@@ -173,8 +176,10 @@ if __name__ == "__main__":
     parser.add_argument("--security-firm",
                         choices=["FUTUSECURITIES", "FUTUINC", "FUTUSG", "FUTUAU", "FUTUCA", "FUTUJP", "FUTUMY"],
                         default=None, help="Security firm identifier")
+    parser.add_argument("--ctx-type", choices=list(TRADE_CTX_TYPE_CHOICES), default="SEC",
+                        help="Trade context: SEC=securities, FUTURE=futures/event contracts (same as get_accounts ctx_type)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     modify_order(order_id=args.order_id, price=args.price, quantity=args.quantity,
                  adjust_limit=args.adjust_limit, acc_id=args.acc_id, market=args.market,
-                 trd_env=args.trd_env, security_firm=args.security_firm, output_json=args.output_json)
+                 trd_env=args.trd_env, security_firm=args.security_firm, ctx_type=args.ctx_type, output_json=args.output_json)

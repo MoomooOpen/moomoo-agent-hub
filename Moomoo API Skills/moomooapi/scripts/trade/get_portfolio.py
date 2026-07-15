@@ -32,7 +32,9 @@ import sys
 import os as _os
 sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..")))
 from common import (
-    create_trade_context,
+    create_sec_or_future_trade_context,
+    normalize_trade_ctx_type,
+    TRADE_CTX_TYPE_CHOICES,
     parse_trd_env,
     parse_market,
     TRD_MARKET_CLI_CHOICES,
@@ -61,9 +63,10 @@ def _resolve_asset_category(asset_category):
 
 
 def get_portfolio(acc_id=None, market=None, trd_env=None, currency=None, security_firm=None,
-                  asset_category=None, show_option_strategy_view=False, output_json=False):
+                  asset_category=None, show_option_strategy_view=False, ctx_type="SEC", output_json=False):
     acc_id = acc_id or get_default_acc_id()
     trd_env = parse_trd_env(trd_env) if trd_env else get_default_trd_env()
+    ctx_type = normalize_trade_ctx_type(ctx_type)
     asset_cat_enum = _resolve_asset_category(asset_category)
     if asset_category and asset_cat_enum is None:
         msg = (f"AssetCategory={asset_category} is not supported by current moomoo-api SDK. "
@@ -76,7 +79,7 @@ def get_portfolio(acc_id=None, market=None, trd_env=None, currency=None, securit
 
     ctx = None
     try:
-        ctx = create_trade_context(market, security_firm=parse_security_firm(security_firm))
+        ctx = create_sec_or_future_trade_context(market, security_firm=parse_security_firm(security_firm), ctx_type=ctx_type)
         # Query funds (refresh_cache=True to avoid stale data, especially for paper trading)
         query_kwargs = dict(trd_env=trd_env, acc_id=acc_id, refresh_cache=True)
         if currency:
@@ -208,10 +211,12 @@ if __name__ == "__main__":
                         help="AssetCategory filter (NONE/JP/US). Use JP/US to query a specific sub-account view")
     parser.add_argument("--show-option-strategy-view", action="store_true",
                         help="View positions by option strategy dimension")
+    parser.add_argument("--ctx-type", choices=list(TRADE_CTX_TYPE_CHOICES), default="SEC",
+                        help="Trade context: SEC=securities, FUTURE=futures/event contracts (same as get_accounts ctx_type)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_portfolio(acc_id=args.acc_id, market=args.market, trd_env=args.trd_env,
                   currency=args.currency, security_firm=args.security_firm,
                   asset_category=args.asset_category,
                   show_option_strategy_view=args.show_option_strategy_view,
-                  output_json=args.output_json)
+                  ctx_type=args.ctx_type, output_json=args.output_json)

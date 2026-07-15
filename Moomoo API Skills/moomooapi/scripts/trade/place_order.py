@@ -11,12 +11,15 @@ API Limits:
 - Real accounts require manually unlocking the trade password in the OpenD GUI
 
 Parameter Description:
-- price: Still required for market/auction orders (any value accepted). Precision: futures integer 8 digits decimal 9 digits, US options decimal 2 digits, US stocks <=$ 1 allow decimal 4 digits, others decimal 3 digits rounded
-- qty: Unit is "contracts" for options and futures
-- code: Futures continuous contract codes are automatically converted to actual contract codes
+- price: Still required for market/auction orders (any value accepted). Precision: futures integer 8 digits decimal 9 digits, US options decimal 2 digits, US stocks <=$ 1 allow decimal 4 digits, others decimal 3 digits rounded; event contracts 0.01~0.99 with 2 decimal places
+- qty / --quantity: Unit is "contracts" for options and futures. Mutually exclusive with --amount; if both set, amount wins and qty is forced to 0
+- amount: Order amount; only for event contracts (EC.). When amount is set, qty is passed as 0
+- pred_side: Event-contract prediction side YES/NO; required for event contracts
+- code: Futures continuous contract codes are automatically converted to actual contract codes; event contracts use EC.xxx (no market prefix) via OpenFutureTradeContext
 - adjust_limit: Positive values adjust upward, negative values adjust downward, e.g. 0.015 means upward adjustment range not exceeding 1.5%
 - remark: UTF-8 length limit 64 bytes
-- time_in_force: Market orders for HK stocks, A-shares, and global futures only support day validity
+- time_in_force: Market orders for HK stocks, A-shares, and global futures only support day validity; use with expire_time when GTD
+- expire_time: Order expiry date yyyy-MM-dd; only valid when time_in_force=GTD
 - fill_outside_rth: For HK pre-market auction and US pre/post market; market orders not supported during pre/post market sessions
 - aux_price: Required for stop-loss/take-profit type orders
 - trail_type/trail_value/trail_spread: Required for trailing stop orders
@@ -34,6 +37,8 @@ import os as _os
 sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..")))
 from common import (
     create_trade_context,
+    create_future_trade_context,
+    is_event_contract_code,
     parse_trd_env,
     parse_trd_side,
     parse_security_firm,
@@ -47,6 +52,8 @@ from common import (
     safe_int,
     OrderType,
     Session,
+    TimeInForce,
+    PredSide,
     RET_OK,
     is_empty,
 )
@@ -73,6 +80,14 @@ def _audit_log(entry):
         pass
 
 
+def _fail(msg, output_json=False, code=1):
+    if output_json:
+        print(json.dumps({"error": msg}, ensure_ascii=False))
+    else:
+        print(f"Error: {msg}")
+    sys.exit(code)
+
+
 def _resolve_jp_acc_type(jp_acc_type):
     if not jp_acc_type:
         return None
@@ -83,33 +98,95 @@ def _resolve_jp_acc_type(jp_acc_type):
     return getattr(SubAccType, str(jp_acc_type).upper(), None)
 
 
-def place_order(code, side, quantity, price=None, order_type="NORMAL",
+def _resolve_time_in_force(name):
+    if TimeInForce is None:
+        raise ValueError("Current SDK does not support TimeInForce")
+    key = str(name).upper()
+    val = getattr(TimeInForce, key, None)
+    if val is None:
+        raise ValueError(f"Unsupported time_in_force: {name}")
+    return val
+
+
+def _resolve_pred_side(name):
+    if PredSide is None:
+        raise ValueError("Current SDK does not support PredSide; please upgrade moomoo-api")
+    key = str(name).upper()
+    val = getattr(PredSide, key, None)
+    if val is None or key == "UNKNOWN":
+        raise ValueError(f"Unsupported pred_side: {name}; use YES or NO")
+    return val
+
+
+def _parse_trdmarket_auth(row):
+    raw = safe_get(row, "trdmarket_auth", default=[])
+    if isinstance(raw, str):
+        return [s.strip().upper() for s in raw.strip("[]").split(",") if s.strip()]
+    if isinstance(raw, list):
+        return [format_enum(m).upper() for m in raw]
+    return []
+
+
+def _account_has_prediction(row):
+    return "PREDICTION" in _parse_trdmarket_auth(row)
+
+
+def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
                 acc_id=None, trd_env=None, security_firm=None, output_json=False,
                 confirmed=False, fill_outside_rth=False, session_str="NONE",
-                jp_acc_type=None, position_id=None):
+                jp_acc_type=None, position_id=None,
+                amount=None, pred_side=None, time_in_force="DAY", expire_time=None):
     acc_id = acc_id or get_default_acc_id()
     trd_env = parse_trd_env(trd_env) if trd_env else get_default_trd_env()
     trd_side = parse_trd_side(side)
+    is_ec = is_event_contract_code(code)
+    firm_enum = parse_security_firm(security_firm)
 
     jp_acc_type_enum = _resolve_jp_acc_type(jp_acc_type)
     if jp_acc_type and jp_acc_type_enum is None:
-        msg = (f"jp_acc_type={jp_acc_type} is not supported by current moomoo-api SDK. "
-               f"Upgrade the SDK or omit --jp-acc-type.")
-        if output_json:
-            print(json.dumps({"error": msg}, ensure_ascii=False))
-        else:
-            print(f"Error: {msg}")
-        sys.exit(1)
+        _fail(
+            f"jp_acc_type={jp_acc_type} is not supported by current moomoo-api SDK. "
+            f"Upgrade the SDK or omit --jp-acc-type.",
+            output_json,
+        )
 
-    # Automatically infer trading market from --code prefix
-    market = infer_market_from_code(code)
-    if not market:
-        msg = f"Unable to infer trading market from code '{code}', please use full format such as US.AAPL, HK.00700, SG.D05, MY.1155, JP.7203"
-        if output_json:
-            print(json.dumps({"error": msg}, ensure_ascii=False))
-        else:
-            print(f"Error: {msg}")
-        sys.exit(1)
+    if is_ec and format_enum(trd_env) == "SIMULATE":
+        _fail("Paper trading does not support event contracts; use --trd-env REAL", output_json)
+
+    if is_ec and not pred_side:
+        _fail("Event contracts require --pred-side YES or NO", output_json)
+
+    pred_side_enum = None
+    if pred_side:
+        try:
+            pred_side_enum = _resolve_pred_side(pred_side)
+        except ValueError as e:
+            _fail(str(e), output_json)
+
+    if amount is not None:
+        if not is_ec:
+            _fail("--amount is only valid for event contracts (EC.)", output_json)
+        qty = 0
+    elif quantity is None:
+        _fail("Must specify --quantity, or --amount for event contracts", output_json)
+    else:
+        try:
+            if int(quantity) <= 0:
+                raise ValueError
+            qty = int(quantity)
+        except (ValueError, TypeError):
+            _fail("Quantity must be a positive integer", output_json)
+
+    if not is_ec:
+        market = infer_market_from_code(code)
+        if not market:
+            _fail(
+                f"Unable to infer trading market from code '{code}', please use full format such as "
+                f"US.AAPL, HK.00700, SG.D05, MY.1155, JP.7203; event contracts use EC.xxx",
+                output_json,
+            )
+    else:
+        market = None
 
     if str(order_type).upper() == "MARKET":
         order_type_enum = OrderType.MARKET
@@ -117,18 +194,18 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
     else:
         order_type_enum = OrderType.NORMAL
         if price is None:
-            print("Error: Limit order must specify --price")
-            sys.exit(1)
+            _fail("Limit order must specify --price", output_json)
 
     try:
-        if quantity is None or int(quantity) <= 0:
-            raise ValueError
-    except (ValueError, TypeError):
-        if output_json:
-            print(json.dumps({"error": "Quantity must be a positive integer"}, ensure_ascii=False))
-        else:
-            print("Error: Quantity must be a positive integer")
-        sys.exit(1)
+        tif_enum = _resolve_time_in_force(time_in_force)
+    except ValueError as e:
+        _fail(str(e), output_json)
+
+    tif_name = str(time_in_force).upper()
+    if tif_name == "GTD" and not expire_time:
+        _fail("time_in_force=GTD requires --expire-time (yyyy-MM-dd)", output_json)
+    if expire_time and tif_name != "GTD":
+        _fail("--expire-time is only valid when --time-in-force is GTD", output_json)
 
     # Real trading hard constraint: must pass --confirmed to actually place the order
     if format_enum(trd_env) == "REAL" and not confirmed:
@@ -136,13 +213,18 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
             "action": "place_order_preview",
             "code": code,
             "side": format_enum(trd_side),
-            "quantity": quantity,
+            "quantity": qty,
+            "amount": amount,
+            "pred_side": str(pred_side).upper() if pred_side else None,
             "price": price,
             "order_type": str(order_type).upper(),
+            "time_in_force": tif_name,
+            "expire_time": expire_time,
             "trd_env": "REAL",
             "acc_id": acc_id,
             "jp_acc_type": jp_acc_type or None,
             "position_id": position_id or None,
+            "is_event_contract": is_ec,
             "message": "Real trading requires confirmation. Please verify order details and re-execute with the --confirmed parameter.",
         }
         if output_json:
@@ -153,9 +235,17 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
             print("=" * 60)
             print(f"  Code:       {code}")
             print(f"  Side:       {format_enum(trd_side)}")
-            print(f"  Quantity:   {quantity}")
+            if amount is not None:
+                print(f"  Amount:     {amount}")
+            else:
+                print(f"  Quantity:   {qty}")
+            if pred_side:
+                print(f"  Pred Side:  {str(pred_side).upper()}")
             print(f"  Price:      {price}")
             print(f"  Type:       {order_type}")
+            print(f"  TIF:        {tif_name}")
+            if expire_time:
+                print(f"  Expire:     {expire_time}")
             print(f"  Account:    {acc_id}")
             if jp_acc_type:
                 print(f"  JP Sub-Account: {jp_acc_type}")
@@ -167,43 +257,97 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
 
     ctx = None
     try:
-        ctx = create_trade_context(market, security_firm=parse_security_firm(security_firm))
-        # Validate account role: MASTER accounts are not allowed to place orders
+        if is_ec:
+            ctx = create_future_trade_context(security_firm=firm_enum)
+        else:
+            ctx = create_trade_context(market, security_firm=firm_enum)
+
+        # Validate account role: MASTER accounts are not allowed; event contracts need PREDICTION
         if acc_id:
             ret, acc_data = ctx.get_acc_list()
             if ret == RET_OK and not is_empty(acc_data):
+                matched = False
+                has_any_prediction = False
                 for i in range(len(acc_data)):
                     row = acc_data.iloc[i] if hasattr(acc_data, "iloc") else acc_data[i]
+                    if _account_has_prediction(row):
+                        has_any_prediction = True
                     row_acc_id = safe_int(safe_get(row, "acc_id", default=0))
-                    if row_acc_id == safe_int(acc_id):
-                        acc_role = format_enum(safe_get(row, "acc_role", default=""))
-                        if acc_role.upper() == "MASTER":
-                            msg = "Master account (MASTER) is not allowed to place orders, please select a non-master account"
-                            if output_json:
-                                print(json.dumps({"error": msg}, ensure_ascii=False))
-                            else:
-                                print(f"Error: {msg}")
-                            sys.exit(1)
-                        break
+                    if row_acc_id != safe_int(acc_id):
+                        continue
+                    matched = True
+                    acc_role = format_enum(safe_get(row, "acc_role", default=""))
+                    if acc_role.upper() == "MASTER":
+                        _fail("Master account (MASTER) is not allowed to place orders, please select a non-master account", output_json)
+                    if is_ec and not _account_has_prediction(row):
+                        if not has_any_prediction:
+                            for j in range(len(acc_data)):
+                                r2 = acc_data.iloc[j] if hasattr(acc_data, "iloc") else acc_data[j]
+                                if _account_has_prediction(r2):
+                                    has_any_prediction = True
+                                    break
+                        if not has_any_prediction:
+                            _fail(
+                                "Event contracts are not supported (no futures account with PREDICTION in trdmarket_auth)",
+                                output_json,
+                            )
+                        _fail(
+                            f"Account {acc_id} trdmarket_auth does not contain PREDICTION; cannot trade event contracts",
+                            output_json,
+                        )
+                    break
+                if is_ec and not matched:
+                    if not has_any_prediction:
+                        for i in range(len(acc_data)):
+                            row = acc_data.iloc[i] if hasattr(acc_data, "iloc") else acc_data[i]
+                            if _account_has_prediction(row):
+                                has_any_prediction = True
+                                break
+                    if not has_any_prediction:
+                        _fail(
+                            "Event contracts are not supported (no futures account with PREDICTION in trdmarket_auth)",
+                            output_json,
+                        )
+        elif is_ec:
+            ret, acc_data = ctx.get_acc_list()
+            if ret == RET_OK and not is_empty(acc_data):
+                if not any(
+                    _account_has_prediction(
+                        acc_data.iloc[i] if hasattr(acc_data, "iloc") else acc_data[i]
+                    )
+                    for i in range(len(acc_data))
+                ):
+                    _fail(
+                        "Event contracts are not supported (no futures account with PREDICTION in trdmarket_auth)",
+                        output_json,
+                    )
 
         session = ORDER_SESSION_MAP.get(session_str.upper(), Session.NONE)
         order_kwargs = dict(
             price=float(price),
-            qty=int(quantity),
+            qty=qty,
             code=code,
             trd_side=trd_side,
             order_type=order_type_enum,
             trd_env=trd_env,
             acc_id=acc_id,
+            time_in_force=tif_enum,
         )
         if fill_outside_rth:
             order_kwargs["fill_outside_rth"] = True
         if session != Session.NONE:
             order_kwargs["session"] = session
+        if expire_time:
+            order_kwargs["expire_time"] = expire_time
+        if amount is not None:
+            order_kwargs["amount"] = float(amount)
+        if pred_side_enum is not None:
+            order_kwargs["pred_side"] = pred_side_enum
         if jp_acc_type_enum is not None:
             order_kwargs["jp_acc_type"] = jp_acc_type_enum
         if position_id:
             order_kwargs["position_id"] = position_id
+
         ret, data = ctx.place_order(**order_kwargs)
         check_ret(ret, data, ctx, "Place order")
 
@@ -217,9 +361,13 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
             "order_id": str(order_id),
             "code": code,
             "side": format_enum(trd_side),
-            "quantity": quantity,
+            "quantity": qty,
+            "amount": amount,
+            "pred_side": str(pred_side).upper() if pred_side else None,
             "price": price,
             "order_type": str(order_type).upper(),
+            "time_in_force": tif_name,
+            "expire_time": expire_time,
             "trd_env": format_enum(trd_env),
             "jp_acc_type": jp_acc_type or None,
             "position_id": position_id or None,
@@ -237,7 +385,12 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
             print(f"  Order ID:    {order_id}")
             print(f"  Code:        {code}")
             print(f"  Side:        {format_enum(trd_side)}")
-            print(f"  Quantity:    {quantity}")
+            if amount is not None:
+                print(f"  Amount:      {amount}")
+            else:
+                print(f"  Quantity:    {qty}")
+            if pred_side:
+                print(f"  Pred Side:   {str(pred_side).upper()}")
             print(f"  Price:       {price}")
             print(f"  Type:        {order_type}")
             print(f"  Environment: {format_enum(trd_env)}")
@@ -245,7 +398,8 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
 
     except Exception as e:
         _audit_log({"action": "place_order", "result": "error", "code": code,
-                     "side": side, "quantity": quantity, "price": price, "error": str(e)})
+                     "side": side, "quantity": quantity, "amount": amount,
+                     "price": price, "error": str(e)})
         if output_json:
             print(json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
@@ -256,12 +410,19 @@ def place_order(code, side, quantity, price=None, order_type="NORMAL",
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Place order (buy/sell stock)")
-    parser.add_argument("--code", required=True, help="Stock code (e.g. US.AAPL)")
+    parser = argparse.ArgumentParser(description="Place order (buy/sell stock / event contract)")
+    parser.add_argument("--code", required=True, help="Instrument code (e.g. US.AAPL; event contract EC.xxx)")
     parser.add_argument("--side", required=True, choices=["BUY", "SELL"], help="Trade direction")
-    parser.add_argument("--quantity", type=int, required=True, help="Quantity")
+    parser.add_argument("--quantity", type=int, default=None, help="Quantity (mutually exclusive with --amount; amount wins)")
+    parser.add_argument("--amount", type=float, default=None, help="Order amount (event contracts only; preferred over quantity)")
+    parser.add_argument("--pred-side", choices=["YES", "NO"], default=None, dest="pred_side",
+                        help="Event-contract prediction side (required for EC.)")
     parser.add_argument("--price", type=float, default=None, help="Price (required for limit orders)")
     parser.add_argument("--order-type", default="NORMAL", choices=["NORMAL", "MARKET"], help="Order type")
+    parser.add_argument("--time-in-force", default="DAY", dest="time_in_force",
+                        help="Time in force (default DAY; GTD requires --expire-time)")
+    parser.add_argument("--expire-time", default=None, dest="expire_time",
+                        help="Order expiry date yyyy-MM-dd (only when time_in_force=GTD)")
     parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
     parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")
     parser.add_argument("--security-firm",
@@ -291,4 +452,6 @@ if __name__ == "__main__":
                 trd_env=args.trd_env, security_firm=args.security_firm,
                 output_json=args.output_json, confirmed=args.confirmed,
                 fill_outside_rth=args.fill_outside_rth, session_str=args.session,
-                jp_acc_type=args.jp_acc_type, position_id=args.position_id)
+                jp_acc_type=args.jp_acc_type, position_id=args.position_id,
+                amount=args.amount, pred_side=args.pred_side,
+                time_in_force=args.time_in_force, expire_time=args.expire_time)
