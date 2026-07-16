@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Get Event Contract Real-time Ticker
+Get Prediction Market Real-time Ticker
 
-Function: Get event contract real-time trade ticks (YES/NO trade price, volume, trade side, sequence); requires subscribing to TICKER first
+Function: Get prediction market real-time trade ticks (YES/NO trade price, volume, trade side, sequence); requires subscribing to TICKER first
 Usage: python get_event_contract_ticker.py EC.KXODIMATCH-26JUL140600INDENG-IND [--count 30] [--no-auto-subscribe] [--json]
 
 API: OpenQuoteContext.get_event_contract_ticker(code, count=30)
@@ -43,10 +43,10 @@ def get_event_contract_ticker(code, count=30, auto_subscribe=True, output_json=F
         if auto_subscribe:
             ensure_event_contract_subscribed(ctx, code, SubType.TICKER,
                                              output_json=output_json,
-                                             action="Subscribe event contract ticker")
+                                             action="Subscribe prediction market ticker")
 
         ret, data = ctx.get_event_contract_ticker(code, count=count)
-        check_ret(ret, data, ctx, "Get event contract ticker")
+        check_ret(ret, data, ctx, "Get prediction market ticker")
 
         if is_empty(data):
             if output_json:
@@ -59,7 +59,7 @@ def get_event_contract_ticker(code, count=30, auto_subscribe=True, output_json=F
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"Event Contract Ticker - {code}")
+            print(f"Prediction Market Ticker - {code}")
             print("=" * 70)
             cols = [c for c in ['code', 'time', 'yes_price', 'no_price',
                                 'volume', 'side', 'sequence']
@@ -79,8 +79,8 @@ def get_event_contract_ticker(code, count=30, auto_subscribe=True, output_json=F
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get event contract real-time ticker (requires TICKER subscription)")
-    parser.add_argument("code", help="Event contract code, e.g. EC.KXODIMATCH-26JUL140600INDENG-IND")
+    parser = argparse.ArgumentParser(description="Get prediction market real-time ticker (requires TICKER subscription)")
+    parser.add_argument("code", help="Prediction market contract code, e.g. EC.KXODIMATCH-26JUL140600INDENG-IND")
     parser.add_argument("--count", type=int, default=30, help="Number of ticks, default 30, max 1000")
     parser.add_argument("--no-auto-subscribe", action="store_true",
                         help="Do not auto-subscribe (use when already subscribed)")

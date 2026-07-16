@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Receive Event Contract Ticker Push
+Receive Prediction Market Ticker Push
 
-Function: Subscribe to event contract ticker and receive real-time pushes via a Handler
+Function: Subscribe to prediction market ticker and receive real-time pushes via a Handler
 Usage: python push_event_contract_ticker.py EC.KXODIMATCH-26JUL140600INDENG-IND --duration 60 [--json]
 
 API: EventContractTickerHandlerBase push (requires set_handler + subscription to SubType.TICKER)
@@ -32,14 +32,14 @@ from common import (
 
 from moomoo import RET_ERROR
 
-# The handler base class is only provided by SDK versions that support Event Contract.
+# The handler base class is only provided by SDK versions that support prediction market.
 # Fall back to `object` on older SDKs so the module imports cleanly (and -h keeps working);
 # the actual availability is enforced in main() via assert_event_contract_support().
 _EC_TK_BASE = EventContractTickerHandlerBase if EventContractTickerHandlerBase else object
 
 
 class EventContractTickerHandler(_EC_TK_BASE):
-    """Event contract ticker push callback handler"""
+    """Prediction market ticker push callback handler"""
     def __init__(self, output_json=False):
         super().__init__()
         self.output_json = output_json
@@ -69,7 +69,7 @@ class EventContractTickerHandler(_EC_TK_BASE):
                 })
             print(json.dumps({"type": "EVENT_CONTRACT_TICKER", "data": records}, ensure_ascii=False, default=str), flush=True)
         else:
-            print(f"\n[EventContract Ticker Push] {time.strftime('%H:%M:%S')}")
+            print(f"\n[Prediction Market Ticker Push] {time.strftime('%H:%M:%S')}")
             print(content.to_string(index=False))
 
         return RET_OK, content
@@ -85,10 +85,10 @@ def push_event_contract_ticker(codes, duration=60, output_json=False):
         ctx.set_handler(handler)
 
         ret, msg = ctx.subscribe_event_contract(codes, [SubType.TICKER], subscribe_push=True)
-        check_ret(ret, msg, ctx, "Subscribe event contract ticker push")
+        check_ret(ret, msg, ctx, "Subscribe prediction market ticker push")
 
         if not output_json:
-            print(f"Subscribed event contract ticker push: {', '.join(codes)}")
+            print(f"Subscribed prediction market ticker push: {', '.join(codes)}")
             print(f"Waiting for pushes for {duration} seconds...")
 
         time.sleep(duration)
@@ -107,8 +107,8 @@ def push_event_contract_ticker(codes, duration=60, output_json=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Receive event contract ticker push")
-    parser.add_argument("codes", nargs="+", help="Event contract codes, e.g. EC.xxx")
+    parser = argparse.ArgumentParser(description="Receive prediction market ticker push")
+    parser.add_argument("codes", nargs="+", help="Prediction market contract codes, e.g. EC.xxx")
     parser.add_argument("--duration", type=int, default=60, help="Duration to receive (seconds, default: 60)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output JSON format")
     args = parser.parse_args()

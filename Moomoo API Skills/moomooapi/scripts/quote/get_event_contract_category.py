@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Get Event Contract Category List
+Get Prediction Market Category List
 
-Function: Get Event Contract top-level categories and their sub-categories (tags), no subscription required
+Function: Get Prediction Market top-level categories and their sub-categories (tags), no subscription required
 Usage: python get_event_contract_category.py [--category Sports] [--json]
 
 API: OpenQuoteContext.get_event_contract_category(category=None)
@@ -34,7 +34,7 @@ def get_event_contract_category(category=None, output_json=False):
         assert_event_contract_support(ctx, output_json=output_json)
 
         ret, data = ctx.get_event_contract_category(category=category)
-        check_ret(ret, data, ctx, "Get event contract category")
+        check_ret(ret, data, ctx, "Get prediction market category")
 
         if is_empty(data):
             if output_json:
@@ -47,7 +47,7 @@ def get_event_contract_category(category=None, output_json=False):
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("Event Contract Categories")
+            print("Prediction Market Categories")
             print("=" * 70)
             print_display_df(data, max_colwidth=60)
             print(f"\nTotal {len(data)} categories")
@@ -64,7 +64,7 @@ def get_event_contract_category(category=None, output_json=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get event contract category list (no subscription required)")
+    parser = argparse.ArgumentParser(description="Get prediction market category list (no subscription required)")
     parser.add_argument("--category", default=None, help="Top-level category id, e.g. Sports; omit to return all")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output JSON format")
     args = parser.parse_args()

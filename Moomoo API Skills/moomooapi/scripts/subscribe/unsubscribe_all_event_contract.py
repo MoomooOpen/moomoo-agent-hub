@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Unsubscribe All Event Contract Subscriptions on the Current Connection
+Unsubscribe All Prediction Market Subscriptions on the Current Connection
 
-Function: One-click cancel all event contract subscriptions on the current connection
+Function: One-click cancel all prediction market subscriptions on the current connection
 Usage: python unsubscribe_all_event_contract.py [--json]
 
 API: OpenQuoteContext.unsubscribe_all_event_contract()
@@ -32,12 +32,12 @@ def unsubscribe_all_event_contract(output_json=False):
         assert_event_contract_support(ctx, output_json=output_json)
 
         ret, err = ctx.unsubscribe_all_event_contract()
-        check_ret(ret, err, ctx, "Unsubscribe all event contracts")
+        check_ret(ret, err, ctx, "Unsubscribe all prediction markets")
 
         if output_json:
             print(json.dumps({"result": "ok"}, ensure_ascii=False))
         else:
-            print("Unsubscribed all event contracts on the current connection")
+            print("Unsubscribed all prediction markets on the current connection")
 
     except Exception as e:
         if output_json:
@@ -50,7 +50,7 @@ def unsubscribe_all_event_contract(output_json=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Unsubscribe all event contracts on the current connection")
+    parser = argparse.ArgumentParser(description="Unsubscribe all prediction markets on the current connection")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output JSON format")
     args = parser.parse_args()
     unsubscribe_all_event_contract(args.output_json)

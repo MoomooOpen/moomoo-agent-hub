@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Unsubscribe Event Contract
+Unsubscribe Prediction Market
 
-Function: Precisely unsubscribe event contract by contract code, data type, and K-line source
+Function: Precisely unsubscribe prediction market by contract code, data type, and K-line source
 Usage: python unsubscribe_event_contract.py EC.xxx --types TICKER [--kline-source ORDER_BOOK_YES] [--json]
 
 API: OpenQuoteContext.unsubscribe_event_contract(code_list, subtype_list, kline_source_list=None)
@@ -41,7 +41,7 @@ def unsubscribe_event_contract(codes, subtype_names, kline_source_names=None, ou
 
         ret, err = ctx.unsubscribe_event_contract(
             codes, subtypes, kline_source_list=kline_sources)
-        check_ret(ret, err, ctx, "Unsubscribe event contract")
+        check_ret(ret, err, ctx, "Unsubscribe prediction market")
 
         result = {
             "codes": codes,
@@ -54,7 +54,7 @@ def unsubscribe_event_contract(codes, subtype_names, kline_source_names=None, ou
             print(json.dumps(result, ensure_ascii=False))
         else:
             print("=" * 50)
-            print("Unsubscribed event contract successfully")
+            print("Unsubscribed prediction market successfully")
             print("=" * 50)
             print(f"  Contracts: {', '.join(codes)}")
             print(f"  Types: {', '.join(result['subtypes'])}")
@@ -71,8 +71,8 @@ def unsubscribe_event_contract(codes, subtype_names, kline_source_names=None, ou
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Unsubscribe event contract")
-    parser.add_argument("codes", nargs="+", help="Event contract codes, e.g. EC.xxx")
+    parser = argparse.ArgumentParser(description="Unsubscribe prediction market")
+    parser.add_argument("codes", nargs="+", help="Prediction market contract codes, e.g. EC.xxx")
     parser.add_argument("--types", nargs="+", required=True,
                         help="Unsubscribe types: ORDER_BOOK TICKER K_1M K_5M K_60M K_DAY")
     parser.add_argument("--kline-source", nargs="+", default=None,

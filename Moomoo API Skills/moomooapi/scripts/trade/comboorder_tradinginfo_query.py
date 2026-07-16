@@ -171,7 +171,7 @@ if __name__ == "__main__":
         help="Security firm identifier",
     )
     parser.add_argument("--ctx-type", choices=list(TRADE_CTX_TYPE_CHOICES), default="SEC",
-                        help="Trade context: SEC=securities, FUTURE=futures/event contracts (same as get_accounts ctx_type)")
+                        help="Trade context: SEC=securities, FUTURE=futures/prediction market (same as get_accounts ctx_type)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output JSON format")
     args = parser.parse_args()
 

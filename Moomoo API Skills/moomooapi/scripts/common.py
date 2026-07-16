@@ -232,7 +232,7 @@ from moomoo import (
         OrderBookType,
 )
 
-# Event Contract enums and data class (only provided by SDK versions that support EC;
+# Prediction market enums and data class (only provided by SDK versions that support EC;
 # older moomoo-api versions degrade to None and assert_event_contract_support() reports it)
 try:
     from moomoo import (
@@ -253,7 +253,7 @@ except ImportError:
     PredSide = None
     ComboLeg = None
 
-# Event Contract push Handlers (same version guard)
+# Prediction market push Handlers (same version guard)
 try:
     from moomoo import (
         EventContractKlineHandlerBase,
@@ -363,7 +363,7 @@ def create_trade_context(market=None, security_firm=None):
 
 
 def create_future_trade_context(security_firm=None):
-    """Create futures trade context (event contracts / futures; no filter_trdmarket)"""
+    """Create futures trade context (prediction market / futures; no filter_trdmarket)"""
     if OpenFutureTradeContext is None:
         raise RuntimeError("Current SDK does not support OpenFutureTradeContext; please upgrade moomoo-api")
     host, port = get_opend_config()
@@ -380,7 +380,7 @@ def create_future_trade_context(security_firm=None):
 
 
 def is_event_contract_code(code):
-    """Event contract codes start with EC. (no market prefix)"""
+    """Prediction market codes start with EC. (no market prefix)"""
     return bool(code) and str(code).strip().upper().startswith("EC.")
 
 
@@ -388,7 +388,7 @@ TRADE_CTX_TYPE_CHOICES = ("SEC", "FUTURE")
 
 
 def normalize_trade_ctx_type(ctx_type=None, code=None, codes=None):
-    """Resolve trade context type: SEC=securities, FUTURE=futures/event contracts.
+    """Resolve trade context type: SEC=securities, FUTURE=futures/prediction market.
 
     Any EC. code always uses FUTURE; otherwise honor explicit ctx_type (default SEC).
     """
@@ -657,28 +657,28 @@ def parse_subtypes(subtype_names):
 
 
 # ============================================================
-# Event Contract helpers
+# Prediction market helpers
 # ============================================================
 
-# Event Contract only supports these 4 KLType values
+# Prediction market K-line only supports these 4 KLType values
 EC_KLTYPE_CHOICES = ["K_1M", "K_5M", "K_60M", "K_DAY"]
 
 
 def _ec_support_error():
-    """Return the error message indicating the current SDK does not support Event Contract"""
+    """Return the error message indicating the current SDK does not support prediction market"""
     try:
         import moomoo as _moomoo
         cur = getattr(_moomoo, "__version__", "unknown")
     except ImportError:
         cur = "unknown"
     return (
-        f"The current moomoo-api {cur} does not support Event Contract. "
+        f"The current moomoo-api {cur} does not support prediction market. "
         "Please upgrade the SDK: pip install --upgrade moomoo-api, then retry."
     )
 
 
 def assert_event_contract_support(ctx=None, output_json=None):
-    """Check whether the current SDK supports Event Contract interfaces; exit with a hint if not.
+    """Check whether the current SDK supports prediction market interfaces; exit with a hint if not.
 
     :param ctx: an opened quote context (used to detect method presence); when None, check enum import
     :param output_json: whether to emit the error as JSON (None -> infer from --json arg)
@@ -702,7 +702,7 @@ def assert_event_contract_support(ctx=None, output_json=None):
 
 
 def parse_pred_side(name):
-    """Parse event-contract side string -> PredSide enum (YES/NO); raise ValueError if invalid"""
+    """Parse prediction market side string -> PredSide enum (YES/NO); raise ValueError if invalid"""
     assert_event_contract_support()
     if name is None or str(name).strip() == "":
         return None
@@ -713,7 +713,7 @@ def parse_pred_side(name):
 
 
 def parse_ec_kline_source(name):
-    """Parse event-contract K-line source string -> ECKlineSource enum (ORDER_BOOK_YES); None returns None"""
+    """Parse prediction market K-line source string -> ECKlineSource enum (ORDER_BOOK_YES); None returns None"""
     assert_event_contract_support()
     if name is None or str(name).strip() == "":
         return None
@@ -724,7 +724,7 @@ def parse_ec_kline_source(name):
 
 
 def parse_ec_status(name):
-    """Parse event-contract status string -> ECStatus enum (e.g. EVENT_ACTIVE); None returns None"""
+    """Parse prediction market status string -> ECStatus enum (e.g. EVENT_ACTIVE); None returns None"""
     assert_event_contract_support()
     if name is None or str(name).strip() == "":
         return None
@@ -735,14 +735,14 @@ def parse_ec_status(name):
 
 
 def ensure_event_contract_subscribed(ctx, code, sub_type, output_json=None,
-                                     kline_source_list=None, action="Subscribe event contract"):
-    """Subscribe an event contract type; silently skip if already subscribed, otherwise print error and exit.
+                                     kline_source_list=None, action="Subscribe prediction market"):
+    """Subscribe a prediction market type; silently skip if already subscribed, otherwise print error and exit.
 
     Shared by get_event_contract_order_book/kline/ticker
     for auto-subscription before querying, avoiding duplicated subscription blocks.
 
     :param ctx: an opened quote context
-    :param code: event contract code
+    :param code: prediction market contract code
     :param sub_type: SubType enum (ORDER_BOOK/TICKER/K_*)
     :param output_json: whether to emit errors as JSON (None -> infer from --json arg)
     :param kline_source_list: K-line source list (ECKlineSource enum), passed through when

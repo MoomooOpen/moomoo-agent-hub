@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Get Event Contract Snapshot
+Get Prediction Market Snapshot
 
-Function: Batch get event contract real-time snapshot (last price, cumulative volume, YES/NO bid/ask, open interest, etc.), no subscription required
+Function: Batch get prediction market real-time snapshot (last price, cumulative volume, YES/NO bid/ask, open interest, etc.), no subscription required
 Usage: python get_event_contract_snapshot.py EC.KXODIMATCH-26JUL140600INDENG-IND --json
        python get_event_contract_snapshot.py EC.xxx1 EC.xxx2 [--json]
 
@@ -39,7 +39,7 @@ def get_event_contract_snapshot(code_list, output_json=False):
             code_list = [code_list]
 
         ret, data = ctx.get_event_contract_snapshot(code_list)
-        check_ret(ret, data, ctx, "Get event contract snapshot")
+        check_ret(ret, data, ctx, "Get prediction market snapshot")
 
         if is_empty(data):
             if output_json:
@@ -52,7 +52,7 @@ def get_event_contract_snapshot(code_list, output_json=False):
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("Event Contract Snapshot")
+            print("Prediction Market Snapshot")
             print("=" * 70)
             cols = [c for c in ['code', 'name', 'status', 'price', 'cumulative_volume',
                                 'yes_bid', 'yes_ask', 'no_bid', 'no_ask',
@@ -73,8 +73,8 @@ def get_event_contract_snapshot(code_list, output_json=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get event contract snapshot (no subscription required)")
-    parser.add_argument("codes", nargs="+", help="Event contract codes, e.g. EC.KXODIMATCH-26JUL140600INDENG-IND")
+    parser = argparse.ArgumentParser(description="Get prediction market snapshot (no subscription required)")
+    parser.add_argument("codes", nargs="+", help="Prediction market contract codes, e.g. EC.KXODIMATCH-26JUL140600INDENG-IND")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output JSON format")
     args = parser.parse_args()
     get_event_contract_snapshot(args.codes, args.output_json)

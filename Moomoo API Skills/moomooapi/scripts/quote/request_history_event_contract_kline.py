@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Fetch Event Contract Historical K-line
+Fetch Prediction Market Historical K-line
 
-Function: Fetch event contract historical K-line; no need to download historical data first, and no subscription to the corresponding K-line type is required; pagination is handled automatically
+Function: Fetch prediction market historical K-line; no need to download historical data first, and no subscription to the corresponding K-line type is required; pagination is handled automatically
 Usage: python request_history_event_contract_kline.py EC.KXNFLAFCCHAMP-27-CIN --start 2026-07-05 --end 2026-07-09 --pre-side YES --ktype K_DAY [--max-count 10] [--page-req-key KEY] [--json]
 
 API: OpenQuoteContext.request_history_event_contract_kline(code, start=None, end=None,
@@ -65,7 +65,7 @@ def request_history_event_contract_kline(code, start=None, end=None, ktype="K_DA
         ret, data, next_page_req_key = ctx.request_history_event_contract_kline(
             code, start=start, end=end, pre_side=pre_side_enum, ktype=kl_type,
             kline_source=kline_source_enum, max_count=max_count, page_req_key=page_req_key)
-        check_ret(ret, data, ctx, "Fetch event contract historical K-line")
+        check_ret(ret, data, ctx, "Fetch prediction market historical K-line")
 
         records = [] if is_empty(data) else df_to_records(data)
 
@@ -76,7 +76,7 @@ def request_history_event_contract_kline(code, start=None, end=None, ktype="K_DA
             }, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"Event Contract Historical K-line - {code} ({ktype_key})")
+            print(f"Prediction Market Historical K-line - {code} ({ktype_key})")
             print(f"Range: {start or '(default)'} ~ {end or '(default)'}")
             print("=" * 70)
             if records:
@@ -101,8 +101,8 @@ def request_history_event_contract_kline(code, start=None, end=None, ktype="K_DA
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fetch event contract historical K-line (no subscription needed)")
-    parser.add_argument("code", help="Event contract code")
+    parser = argparse.ArgumentParser(description="Fetch prediction market historical K-line (no subscription needed)")
+    parser.add_argument("code", help="Prediction market contract code")
     parser.add_argument("--start", default=None, help="Start time, e.g. 2025-06-20")
     parser.add_argument("--end", default=None, help="End time, e.g. 2025-07-20")
     parser.add_argument("--ktype", choices=EC_KLTYPE_CHOICES, default="K_DAY",

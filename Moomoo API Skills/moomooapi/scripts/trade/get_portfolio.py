@@ -212,7 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--show-option-strategy-view", action="store_true",
                         help="View positions by option strategy dimension")
     parser.add_argument("--ctx-type", choices=list(TRADE_CTX_TYPE_CHOICES), default="SEC",
-                        help="Trade context: SEC=securities, FUTURE=futures/event contracts (same as get_accounts ctx_type)")
+                        help="Trade context: SEC=securities, FUTURE=futures/prediction market (same as get_accounts ctx_type)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
     get_portfolio(acc_id=args.acc_id, market=args.market, trd_env=args.trd_env,

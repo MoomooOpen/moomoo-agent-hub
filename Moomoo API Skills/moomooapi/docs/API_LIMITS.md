@@ -57,10 +57,10 @@ Subscription quota and historical Candlestick quota are tiered based on user ass
 | `get_stock_filter` | Max 200 results per call |
 | `get_search_quote` | Max 10 requests per 30 seconds |
 | `get_search_news` | Max 10 requests per 30 seconds |
-| Event contract orderbook/real-time K-line/ticker | `get_event_contract_order_book`/`get_event_contract_kline`/`get_event_contract_ticker` must subscribe to the corresponding type via `subscribe_event_contract` before querying, otherwise an error is returned |
-| `request_history_event_contract_kline` | Event contract historical K-line; no subscription needed; consumes historical K-line quota |
+| Prediction market orderbook/real-time K-line/ticker | `get_event_contract_order_book`/`get_event_contract_kline`/`get_event_contract_ticker` must subscribe to the corresponding type via `subscribe_event_contract` before querying, otherwise an error is returned |
+| `request_history_event_contract_kline` | Prediction market historical K-line; no subscription needed; consumes historical K-line quota |
 | `get_event_contract_order_book` | num must be > 0, default 10 |
-| Event contract K-line | Only supports K_1M/K_5M/K_60M/K_DAY, others raise an error; `max_count` max 1000 |
+| Prediction market K-line | Only supports K_1M/K_5M/K_60M/K_DAY, others raise an error; `max_count` max 1000 |
 | `get_event_contract_ticker` | count max 1000 |
 
 ## Cryptocurrency Limits

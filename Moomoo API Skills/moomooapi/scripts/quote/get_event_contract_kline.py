@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Get Event Contract Real-time K-line
+Get Prediction Market Real-time K-line
 
-Function: Get event contract real-time K-line (contract-level trade-price K-line or YES sub-contract order-book K-line); requires subscribing to the corresponding K-line type first
+Function: Get prediction market real-time K-line (contract-level trade-price K-line or YES sub-contract order-book K-line); requires subscribing to the corresponding K-line type first
 Usage: python get_event_contract_kline.py EC.KXODIMATCH-26JUL140600INDENG-IND --ktype K_DAY --pre-side YES [--kline-source ORDER_BOOK_YES] [--max-count 10] [--no-auto-subscribe] [--json]
 
 API: OpenQuoteContext.get_event_contract_kline(code, pre_side=None, ktype=KLType.K_DAY,
@@ -79,12 +79,12 @@ def get_event_contract_kline(code, ktype="K_DAY", pre_side=None, kline_source=No
             ensure_event_contract_subscribed(ctx, code, sub_type,
                                              output_json=output_json,
                                              kline_source_list=src_list,
-                                             action="Subscribe event contract K-line")
+                                             action="Subscribe prediction market K-line")
 
         ret, data = ctx.get_event_contract_kline(
             code, pre_side=pre_side_enum, ktype=kl_type,
             kline_source=kline_source_enum, max_count=max_count)
-        check_ret(ret, data, ctx, "Get event contract K-line")
+        check_ret(ret, data, ctx, "Get prediction market K-line")
 
         if is_empty(data):
             if output_json:
@@ -97,7 +97,7 @@ def get_event_contract_kline(code, ktype="K_DAY", pre_side=None, kline_source=No
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"Event Contract K-line - {code} ({ktype_key})")
+            print(f"Prediction Market K-line - {code} ({ktype_key})")
             print("=" * 70)
             cols = [c for c in ['code', 'pre_side', 'name', 'time_key', 'open',
                                 'high', 'low', 'close', 'volume']
@@ -117,8 +117,8 @@ def get_event_contract_kline(code, ktype="K_DAY", pre_side=None, kline_source=No
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get event contract real-time K-line (requires corresponding K-line subscription)")
-    parser.add_argument("code", help="Event contract code, e.g. EC.KXODIMATCH-26JUL140600INDENG-IND")
+    parser = argparse.ArgumentParser(description="Get prediction market real-time K-line (requires corresponding K-line subscription)")
+    parser.add_argument("code", help="Prediction market contract code, e.g. EC.KXODIMATCH-26JUL140600INDENG-IND")
     parser.add_argument("--ktype", choices=EC_KLTYPE_CHOICES, default="K_DAY",
                         help="K-line type (only K_1M/K_5M/K_60M/K_DAY, default K_DAY)")
     parser.add_argument("--pre-side", choices=["YES", "NO"], default=None,

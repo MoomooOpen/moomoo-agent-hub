@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Get Event Contract Event List
+Get Prediction Market Event List
 
 Function: Get Event list by Series code, supports status filter and pagination, no subscription required
 Usage: python get_event_contract_event_list.py EC.KXUFCVICROUND.SERIES [--count 20] [--status EVENT_ACTIVE] [--next-page KEY] [--json]
@@ -48,7 +48,7 @@ def get_event_contract_event_list(series_code, status=None, next_page=None, coun
 
         ret, data, page = ctx.get_event_contract_event_list(
             series_code, status=status_enum, next_page=next_page, count=count)
-        check_ret(ret, data, ctx, "Get event contract event list")
+        check_ret(ret, data, ctx, "Get prediction market event list")
 
         records = [] if is_empty(data) else df_to_records(data)
 
@@ -56,7 +56,7 @@ def get_event_contract_event_list(series_code, status=None, next_page=None, coun
             print(json.dumps({"data": records, "next_page": page or ""}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"Event Contract Event List - {series_code}")
+            print(f"Prediction Market Event List - {series_code}")
             print("=" * 70)
             if records:
                 cols = [c for c in ['event_code', 'event_name', 'status', 'start_date',
@@ -80,7 +80,7 @@ def get_event_contract_event_list(series_code, status=None, next_page=None, coun
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get event contract event list (no subscription required)")
+    parser = argparse.ArgumentParser(description="Get prediction market event list (no subscription required)")
     parser.add_argument("series_code", help="Series code, e.g. EC.KXUFCVICROUND.SERIES")
     parser.add_argument("--status", default=None, choices=_EVENT_STATUS_CHOICES,
                         help="Event status filter, e.g. EVENT_ACTIVE")

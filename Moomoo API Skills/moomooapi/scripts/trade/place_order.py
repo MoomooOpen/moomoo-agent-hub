@@ -11,11 +11,11 @@ API Limits:
 - Real accounts require manually unlocking the trade password in the OpenD GUI
 
 Parameter Description:
-- price: Still required for market/auction orders (any value accepted). Precision: futures integer 8 digits decimal 9 digits, US options decimal 2 digits, US stocks <=$ 1 allow decimal 4 digits, others decimal 3 digits rounded; event contracts 0.01~0.99 with 2 decimal places
+- price: Still required for market/auction orders (any value accepted). Precision: futures integer 8 digits decimal 9 digits, US options decimal 2 digits, US stocks <=$ 1 allow decimal 4 digits, others decimal 3 digits rounded; prediction market 0.01~0.99 with 2 decimal places
 - qty / --quantity: Unit is "contracts" for options and futures. Mutually exclusive with --amount; if both set, amount wins and qty is forced to 0
-- amount: Order amount; only for event contracts (EC.). When amount is set, qty is passed as 0
-- pred_side: Event-contract prediction side YES/NO; required for event contracts
-- code: Futures continuous contract codes are automatically converted to actual contract codes; event contracts use EC.xxx (no market prefix) via OpenFutureTradeContext
+- amount: Order amount; only for prediction market (EC.). When amount is set, qty is passed as 0
+- pred_side: Prediction market side YES/NO; required for prediction market orders
+- code: Futures continuous contract codes are automatically converted to actual contract codes; prediction market codes use EC.xxx (no market prefix) via OpenFutureTradeContext
 - adjust_limit: Positive values adjust upward, negative values adjust downward, e.g. 0.015 means upward adjustment range not exceeding 1.5%
 - remark: UTF-8 length limit 64 bytes
 - time_in_force: Market orders for HK stocks, A-shares, and global futures only support day validity; use with expire_time when GTD
@@ -151,10 +151,10 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
         )
 
     if is_ec and format_enum(trd_env) == "SIMULATE":
-        _fail("Paper trading does not support event contracts; use --trd-env REAL", output_json)
+        _fail("Paper trading does not support prediction markets; use --trd-env REAL", output_json)
 
     if is_ec and not pred_side:
-        _fail("Event contracts require --pred-side YES or NO", output_json)
+        _fail("Prediction market orders require --pred-side YES or NO", output_json)
 
     pred_side_enum = None
     if pred_side:
@@ -165,10 +165,10 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
 
     if amount is not None:
         if not is_ec:
-            _fail("--amount is only valid for event contracts (EC.)", output_json)
+            _fail("--amount is only valid for prediction market (EC.)", output_json)
         qty = 0
     elif quantity is None:
-        _fail("Must specify --quantity, or --amount for event contracts", output_json)
+        _fail("Must specify --quantity, or --amount for prediction market", output_json)
     else:
         try:
             if int(quantity) <= 0:
@@ -182,7 +182,7 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
         if not market:
             _fail(
                 f"Unable to infer trading market from code '{code}', please use full format such as "
-                f"US.AAPL, HK.00700, SG.D05, MY.1155, JP.7203; event contracts use EC.xxx",
+                f"US.AAPL, HK.00700, SG.D05, MY.1155, JP.7203; prediction market uses EC.xxx",
                 output_json,
             )
     else:
@@ -240,7 +240,7 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
             else:
                 print(f"  Quantity:   {qty}")
             if pred_side:
-                print(f"  Pred Side:  {str(pred_side).upper()}")
+                print(f"  Prediction Side:  {str(pred_side).upper()}")
             print(f"  Price:      {price}")
             print(f"  Type:       {order_type}")
             print(f"  TIF:        {tif_name}")
@@ -262,7 +262,7 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
         else:
             ctx = create_trade_context(market, security_firm=firm_enum)
 
-        # Validate account role: MASTER accounts are not allowed; event contracts need PREDICTION
+        # Validate account role: MASTER accounts are not allowed; prediction market needs PREDICTION
         if acc_id:
             ret, acc_data = ctx.get_acc_list()
             if ret == RET_OK and not is_empty(acc_data):
@@ -288,11 +288,11 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
                                     break
                         if not has_any_prediction:
                             _fail(
-                                "Event contracts are not supported (no futures account with PREDICTION in trdmarket_auth)",
+                                "Prediction markets are not supported (no futures account with PREDICTION in trdmarket_auth)",
                                 output_json,
                             )
                         _fail(
-                            f"Account {acc_id} trdmarket_auth does not contain PREDICTION; cannot trade event contracts",
+                            f"Account {acc_id} trdmarket_auth does not contain PREDICTION; cannot trade prediction markets",
                             output_json,
                         )
                     break
@@ -305,7 +305,7 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
                                 break
                     if not has_any_prediction:
                         _fail(
-                            "Event contracts are not supported (no futures account with PREDICTION in trdmarket_auth)",
+                            "Prediction markets are not supported (no futures account with PREDICTION in trdmarket_auth)",
                             output_json,
                         )
         elif is_ec:
@@ -318,7 +318,7 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
                     for i in range(len(acc_data))
                 ):
                     _fail(
-                        "Event contracts are not supported (no futures account with PREDICTION in trdmarket_auth)",
+                        "Prediction markets are not supported (no futures account with PREDICTION in trdmarket_auth)",
                         output_json,
                     )
 
@@ -390,7 +390,7 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
             else:
                 print(f"  Quantity:    {qty}")
             if pred_side:
-                print(f"  Pred Side:   {str(pred_side).upper()}")
+                print(f"  Prediction Side:   {str(pred_side).upper()}")
             print(f"  Price:       {price}")
             print(f"  Type:        {order_type}")
             print(f"  Environment: {format_enum(trd_env)}")
@@ -410,13 +410,13 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Place order (buy/sell stock / event contract)")
-    parser.add_argument("--code", required=True, help="Instrument code (e.g. US.AAPL; event contract EC.xxx)")
+    parser = argparse.ArgumentParser(description="Place order (buy/sell stock / prediction market)")
+    parser.add_argument("--code", required=True, help="Instrument code (e.g. US.AAPL; prediction market EC.xxx)")
     parser.add_argument("--side", required=True, choices=["BUY", "SELL"], help="Trade direction")
     parser.add_argument("--quantity", type=int, default=None, help="Quantity (mutually exclusive with --amount; amount wins)")
-    parser.add_argument("--amount", type=float, default=None, help="Order amount (event contracts only; preferred over quantity)")
+    parser.add_argument("--amount", type=float, default=None, help="Order amount (prediction market only; preferred over quantity)")
     parser.add_argument("--pred-side", choices=["YES", "NO"], default=None, dest="pred_side",
-                        help="Event-contract prediction side (required for EC.)")
+                        help="Prediction market side (required for prediction market orders)")
     parser.add_argument("--price", type=float, default=None, help="Price (required for limit orders)")
     parser.add_argument("--order-type", default="NORMAL", choices=["NORMAL", "MARKET"], help="Order type")
     parser.add_argument("--time-in-force", default="DAY", dest="time_in_force",

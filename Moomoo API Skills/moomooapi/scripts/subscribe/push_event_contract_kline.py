@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Receive Event Contract K-line Push
+Receive Prediction Market K-line Push
 
-Function: Subscribe to event contract K-line and receive real-time pushes via a Handler
+Function: Subscribe to prediction market K-line and receive real-time pushes via a Handler
 Usage: python push_event_contract_kline.py EC.KXODIMATCH-26JUL140600INDENG-IND --ktype K_DAY [--kline-source ORDER_BOOK_YES] [--duration 300] [--json]
 
 API: EventContractKlineHandlerBase push (requires set_handler + subscription to the corresponding K-line type)
@@ -10,7 +10,7 @@ Return: callback content is a DataFrame; fields code / pre_side / name / time_ke
 
 API Limits:
 - Requires subscribing to the corresponding K-line type first, limited by the subscription quota
-- Event Contract K-line only supports K_1M/K_5M/K_60M/K_DAY
+- Prediction Market K-line only supports K_1M/K_5M/K_60M/K_DAY
 - Omit kline_source to default to contract-level trade-price K-line
 - The callback runs in a separate thread; mind thread safety
 """
@@ -42,14 +42,14 @@ _KLTYPE_SUBTYPE_MAP = {
     "K_DAY": SubType.K_DAY,
 }
 
-# The handler base class is only provided by SDK versions that support Event Contract.
+# The handler base class is only provided by SDK versions that support prediction market.
 # Fall back to `object` on older SDKs so the module imports cleanly (and -h keeps working);
 # the actual availability is enforced in main() via assert_event_contract_support().
 _EC_KL_BASE = EventContractKlineHandlerBase if EventContractKlineHandlerBase else object
 
 
 class EventContractKlineHandler(_EC_KL_BASE):
-    """Event contract K-line push callback handler"""
+    """Prediction market K-line push callback handler"""
     def __init__(self, output_json=False):
         super().__init__()
         self.output_json = output_json
@@ -81,7 +81,7 @@ class EventContractKlineHandler(_EC_KL_BASE):
                 })
             print(json.dumps({"type": "EVENT_CONTRACT_KLINE", "data": records}, ensure_ascii=False, default=str), flush=True)
         else:
-            print(f"\n[EventContract Kline Push] {time.strftime('%H:%M:%S')}")
+            print(f"\n[Prediction Market Kline Push] {time.strftime('%H:%M:%S')}")
             print(content.to_string(index=False))
 
         return RET_OK, content
@@ -105,10 +105,10 @@ def push_event_contract_kline(codes, ktype="K_DAY", kline_source=None, duration=
 
         ret, msg = ctx.subscribe_event_contract(
             codes, [sub_type], kline_source_list=kline_sources, subscribe_push=True)
-        check_ret(ret, msg, ctx, "Subscribe event contract K-line push")
+        check_ret(ret, msg, ctx, "Subscribe prediction market K-line push")
 
         if not output_json:
-            print(f"Subscribed event contract {ktype_key} K-line push: {', '.join(codes)}")
+            print(f"Subscribed prediction market {ktype_key} K-line push: {', '.join(codes)}")
             print(f"Waiting for pushes for {duration} seconds...")
 
         time.sleep(duration)
@@ -127,8 +127,8 @@ def push_event_contract_kline(codes, ktype="K_DAY", kline_source=None, duration=
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Receive event contract K-line push")
-    parser.add_argument("codes", nargs="+", help="Event contract codes, e.g. EC.xxx")
+    parser = argparse.ArgumentParser(description="Receive prediction market K-line push")
+    parser.add_argument("codes", nargs="+", help="Prediction market contract codes, e.g. EC.xxx")
     parser.add_argument("--ktype", choices=["K_1M", "K_5M", "K_60M", "K_DAY"],
                         default="K_DAY", help="K-line type (default: K_DAY)")
     parser.add_argument("--kline-source", choices=["ORDER_BOOK_YES"], default=None,

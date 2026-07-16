@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Get Event Contract Milestone List
+Get Prediction Market Milestone List
 
-Function: Get milestone time points (e.g. a match) for sport-type event contracts, supports category/competition/related-event filters and pagination, no subscription required
+Function: Get milestone time points (e.g. a match) for sport-type prediction markets, supports category/competition/related-event filters and pagination, no subscription required
 Usage: python get_event_contract_milestone_list.py [--category Sports] [--competition "FIFA World Cup"] [--related-event EC.xxx] [--count 20] [--next-page KEY] [--json]
 
 API: OpenQuoteContext.get_event_contract_milestone_list(category=None, competition=None,
@@ -39,7 +39,7 @@ def get_event_contract_milestone_list(category=None, competition=None, related_e
         ret, data, page = ctx.get_event_contract_milestone_list(
             category=category, competition=competition, related_event=related_event,
             next_page=next_page, count=count)
-        check_ret(ret, data, ctx, "Get event contract milestone list")
+        check_ret(ret, data, ctx, "Get prediction market milestone list")
 
         records = [] if is_empty(data) else df_to_records(data)
 
@@ -47,7 +47,7 @@ def get_event_contract_milestone_list(category=None, competition=None, related_e
             print(json.dumps({"data": records, "next_page": page or ""}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print("Event Contract Milestone List")
+            print("Prediction Market Milestone List")
             print("=" * 70)
             if records:
                 cols = [c for c in ['milestone_code', 'title', 'type', 'start_date',
@@ -71,7 +71,7 @@ def get_event_contract_milestone_list(category=None, competition=None, related_e
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get event contract milestone list (no subscription required)")
+    parser = argparse.ArgumentParser(description="Get prediction market milestone list (no subscription required)")
     parser.add_argument("--category", default=None, help="Top-level category, e.g. Sports")
     parser.add_argument("--competition", default=None, help="Competition name (from filter_competition), e.g. FIFA World Cup")
     parser.add_argument("--related-event", default=None, help="Related event code, e.g. EC.xxx")

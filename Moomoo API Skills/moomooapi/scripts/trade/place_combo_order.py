@@ -2,11 +2,11 @@
 """
 Place combo order
 
-Description: Submit option combo/strategy or event-contract combo order
+Description: Submit option combo/strategy or prediction market combo order
 Usage:
   # Option combo
   python place_combo_order.py '[{"code":"US.AAPL260529C302500","trd_side":"BUY","qty_ratio":1},{"code":"US.AAPL","trd_side":"SELL","qty_ratio":100}]' --price 9.9 --quantity 1
-  # Event-contract combo (all legs EC.; quote_id + per-leg pred_side required)
+  # Prediction market combo (all legs EC.; quote_id + per-leg pred_side required)
   python place_combo_order.py '[{"code":"EC.xxx","trd_side":"BUY","qty_ratio":1,"pred_side":"YES"},{"code":"EC.yyy","trd_side":"BUY","qty_ratio":1,"pred_side":"YES"}]' --price 0.55 --quantity 1 --quote-id {id} --trd-env REAL --confirmed
 
 Rate limit:
@@ -15,10 +15,10 @@ Rate limit:
 - Shares the same rate limit bucket with place_order
 
 Parameter notes:
-- combo_leg_list: Option legs: code/trd_side/qty_ratio/position_id(optional); event-contract legs also need pred_side
+- combo_leg_list: Option legs: code/trd_side/qty_ratio/position_id(optional); prediction market legs also need pred_side
 - trd_side: Supports BUY/SELL/SELLSHORT/BUYBACK (aliases SELL_SHORT/BUY_BACK also accepted) for option combos
-- quote_id: Required for event-contract combos (from request_combo_quotes); ignored for option combos
-- price: For event-contract combos must come from request_combo_quotes ask/bid
+- quote_id: Quote ID from prediction market Combo RFQ (required for prediction market combos); ignored for option combos
+- price: For prediction market combos must come from request_combo_quotes ask/bid
 - FUTUJP rules apply to option combos only
 """
 import argparse
@@ -144,7 +144,7 @@ def _classify_combo_legs(items):
     if not any(flags):
         return False
     raise ValueError(
-        "Invalid combo: cannot mix event-contract legs (EC.) with non-EC legs; "
+        "Invalid combo: cannot mix prediction market legs (EC.) with non-prediction-market legs; "
         "all legs must be EC. or none"
     )
 
@@ -189,7 +189,7 @@ def _parse_combo_legs(legs_json, enforce_jp_close_rules=False):
         if is_ec:
             pred = item.get("pred_side")
             if pred in (None, ""):
-                raise ValueError(f"Event-contract combo leg #{idx} missing pred_side (YES/NO)")
+                raise ValueError(f"Prediction market combo leg #{idx} missing pred_side (YES/NO)")
             leg.pred_side = _resolve_pred_side(pred)
         elif enforce_jp_close_rules:
             is_close_leg = side_name in ("SELL", "BUY_BACK")
@@ -208,7 +208,7 @@ def _parse_combo_legs(legs_json, enforce_jp_close_rules=False):
 
     if is_ec and len(set(side_names)) > 1:
         raise ValueError(
-            f"Event-contract combo requires identical trd_side on all legs, got: {side_names}"
+            f"Prediction market combo requires identical trd_side on all legs, got: {side_names}"
         )
 
     return combo_legs, is_ec
@@ -236,16 +236,16 @@ def _validate_prediction_account(ctx, acc_id, output_json):
                             break
                 if not has_any:
                     _fail(
-                        "Event contracts are not supported (no futures account with PREDICTION in trdmarket_auth)",
+                        "Prediction markets are not supported (no futures account with PREDICTION in trdmarket_auth)",
                         output_json,
                     )
                 _fail(
-                    f"Account {acc_id} trdmarket_auth does not contain PREDICTION; cannot place event-contract combo",
+                    f"Account {acc_id} trdmarket_auth does not contain PREDICTION; cannot place prediction market combo",
                     output_json,
                 )
     if not has_any:
         _fail(
-            "Event contracts are not supported (no futures account with PREDICTION in trdmarket_auth)",
+            "Prediction markets are not supported (no futures account with PREDICTION in trdmarket_auth)",
             output_json,
         )
 
@@ -277,11 +277,11 @@ def place_combo_order(legs_json, price, quantity, order_type="NORMAL",
     if is_ec:
         if not quote_id:
             _fail(
-                "Event-contract combo requires --quote-id (from request_combo_quotes)",
+                "Prediction market combo requires --quote-id (from request_combo_quotes)",
                 output_json,
             )
         if format_enum(trd_env) == "SIMULATE":
-            _fail("Paper trading does not support event-contract combos; use --trd-env REAL", output_json)
+            _fail("Paper trading does not support prediction market combos; use --trd-env REAL", output_json)
         market = None
     else:
         quote_id = None  # silently ignore for option combos
@@ -433,17 +433,17 @@ def place_combo_order(legs_json, price, quantity, order_type="NORMAL",
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Place combo order (option combo/strategy / event-contract combo)")
+    parser = argparse.ArgumentParser(description="Place combo order (option combo/strategy / prediction market combo)")
     parser.add_argument(
         "legs",
         help='Combo legs JSON. Option example with BUY/SELL/SELLSHORT/BUYBACK; '
-             'event-contract: all EC. codes and each leg must include pred_side',
+             'prediction market: all EC. codes and each leg must include pred_side',
     )
     parser.add_argument("--price", type=float, required=True,
-                        help="Order price (event-contract: from request_combo_quotes ask/bid)")
+                        help="Order price (prediction market: from request_combo_quotes ask/bid)")
     parser.add_argument("--quantity", type=float, required=True, help="Combo quantity")
     parser.add_argument("--quote-id", default=None, dest="quote_id",
-                        help="Quote ID (required for event-contract combo; ignored for option combo)")
+                        help="Quote ID from prediction market Combo RFQ (required for prediction market combo; ignored for option combo)")
     parser.add_argument("--order-type", default="NORMAL", help="Order type (default NORMAL)")
     parser.add_argument("--acc-id", type=int, default=None, help="Account ID")
     parser.add_argument("--trd-env", choices=["REAL", "SIMULATE"], default=None, help="Trading environment")

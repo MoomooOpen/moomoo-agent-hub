@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Subscribe Event Contract Real-time Info
+Subscribe Prediction Market Real-time Info
 
-Function: Subscribe event contract real-time info (order book / ticker / K-line, etc.) by specifying contract codes and data types
+Function: Subscribe prediction market real-time info (order book / ticker / K-line, etc.) by specifying contract codes and data types
 Usage: python subscribe_event_contract.py EC.KXODIMATCH-26JUL140600INDENG-IND --types ORDER_BOOK TICKER K_DAY [--kline-source ORDER_BOOK_YES] [--no-first-push] [--json]
 
 API: OpenQuoteContext.subscribe_event_contract(code_list, subtype_list, kline_source_list=None,
@@ -13,7 +13,7 @@ API Limits:
 - Subscription count is limited by the OpenD subscription quota
 - To receive pushes you must set_handler to register the corresponding handler first (the push scripts push_event_contract_* set it automatically)
 - kline_source_list only takes effect when subscribing to K-line types and corresponds one-to-one with K-line types in subtype_list; omit to default to contract-level trade-price K-line
-- Event Contract K-line only supports K_1M/K_5M/K_60M/K_DAY
+- Prediction Market K-line only supports K_1M/K_5M/K_60M/K_DAY
 
 Common SubType: ORDER_BOOK / TICKER / K_1M / K_5M / K_60M / K_DAY
 """
@@ -45,11 +45,11 @@ def subscribe_event_contract(codes, subtype_names, kline_source_names=None,
 
         subtypes = parse_subtypes(subtype_names)
 
-        # Validate K-line types (Event Contract only supports 4)
+        # Validate K-line types (Prediction Market only supports 4)
         subtype_keys = [str(s).split(".")[-1] for s in subtypes]
         for k in subtype_keys:
             if k.startswith("K_") and k not in _EC_KLINE_SUBTYPES:
-                raise ValueError(f"Event Contract K-line only supports {EC_KLTYPE_CHOICES}, got: {k}")
+                raise ValueError(f"Prediction Market K-line only supports {EC_KLTYPE_CHOICES}, got: {k}")
 
         # kline_source_list only takes effect when subscribing to K-line
         kline_sources = None
@@ -59,7 +59,7 @@ def subscribe_event_contract(codes, subtype_names, kline_source_names=None,
         ret, err = ctx.subscribe_event_contract(
             codes, subtypes, kline_source_list=kline_sources,
             is_first_push=is_first_push, subscribe_push=subscribe_push)
-        check_ret(ret, err, ctx, "Subscribe event contract")
+        check_ret(ret, err, ctx, "Subscribe prediction market")
 
         result = {
             "codes": codes,
@@ -74,7 +74,7 @@ def subscribe_event_contract(codes, subtype_names, kline_source_names=None,
             print(json.dumps(result, ensure_ascii=False))
         else:
             print("=" * 50)
-            print("Subscribed event contract successfully")
+            print("Subscribed prediction market successfully")
             print("=" * 50)
             print(f"  Contracts: {', '.join(codes)}")
             print(f"  Types: {', '.join(subtype_keys)}")
@@ -93,8 +93,8 @@ def subscribe_event_contract(codes, subtype_names, kline_source_names=None,
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Subscribe event contract real-time info")
-    parser.add_argument("codes", nargs="+", help="Event contract codes, e.g. EC.xxx")
+    parser = argparse.ArgumentParser(description="Subscribe prediction market real-time info")
+    parser.add_argument("codes", nargs="+", help="Prediction market contract codes, e.g. EC.xxx")
     parser.add_argument("--types", nargs="+", required=True,
                         help="Subscription types: ORDER_BOOK TICKER K_1M K_5M K_60M K_DAY")
     parser.add_argument("--kline-source", nargs="+", default=None,

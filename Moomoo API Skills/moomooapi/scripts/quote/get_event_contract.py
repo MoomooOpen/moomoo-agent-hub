@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Get Event Contract (Contract) List
+Get Prediction Market (Contract) List
 
 Function: Get contract list by Event code, including contract type, times, status, result and trading attributes, no subscription required
 Usage: python get_event_contract.py EC.KXUFCVICROUND-26JUL11SAIPIM.EVENT [--count 20] [--next-page KEY] [--json]
@@ -40,7 +40,7 @@ def get_event_contract(event_code, next_page=None, count=None, output_json=False
 
         ret, data, page = ctx.get_event_contract(
             event_code, next_page=next_page, count=count)
-        check_ret(ret, data, ctx, "Get event contract contract list")
+        check_ret(ret, data, ctx, "Get prediction market contract list")
 
         contract_df = data.get("contract_list") if isinstance(data, dict) else None
         recommends = data.get("recommend_contracts", []) if isinstance(data, dict) else []
@@ -55,7 +55,7 @@ def get_event_contract(event_code, next_page=None, count=None, output_json=False
             }, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"Event Contract Contract List - {event_code}")
+            print(f"Prediction Market Contract List - {event_code}")
             print("=" * 70)
             if records:
                 cols = [c for c in ['contract_code', 'contract_type', 'title', 'status',
@@ -81,7 +81,7 @@ def get_event_contract(event_code, next_page=None, count=None, output_json=False
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get event contract contract list (no subscription required)")
+    parser = argparse.ArgumentParser(description="Get prediction market contract list (no subscription required)")
     parser.add_argument("event_code", help="Event code, e.g. EC.KXUFCVICROUND-26JUL11SAIPIM.EVENT")
     parser.add_argument("--next-page", default=None, help="Pagination token; omit on first page, pass previous next_page to continue")
     parser.add_argument("--count", type=int, default=None, help="Max number returned per page, default 100, max 1000")

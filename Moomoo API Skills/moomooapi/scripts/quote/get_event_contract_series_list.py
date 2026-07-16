@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Get Event Contract Series List
+Get Prediction Market Series List
 
 Function: Get Series list (a Series is a collection of related Events) by category/tag, no subscription required
 Usage: python get_event_contract_series_list.py --category Sports [--tag Football] [--json]
@@ -33,7 +33,7 @@ def get_event_contract_series_list(category=None, tag=None, output_json=False):
         assert_event_contract_support(ctx, output_json=output_json)
 
         ret, data = ctx.get_event_contract_series_list(category=category, tag=tag)
-        check_ret(ret, data, ctx, "Get event contract series list")
+        check_ret(ret, data, ctx, "Get prediction market series list")
 
         if is_empty(data):
             if output_json:
@@ -46,7 +46,7 @@ def get_event_contract_series_list(category=None, tag=None, output_json=False):
             print(json.dumps({"data": df_to_records(data)}, ensure_ascii=False))
         else:
             print("=" * 70)
-            print(f"Event Contract Series List - {category or 'All'} {('/' + tag) if tag else ''}")
+            print(f"Prediction Market Series List - {category or 'All'} {('/' + tag) if tag else ''}")
             print("=" * 70)
             cols = [c for c in ['series_code', 'series_name', 'category', 'tags', 'frequency']
                     if c in data.columns]
@@ -65,7 +65,7 @@ def get_event_contract_series_list(category=None, tag=None, output_json=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get event contract series list (no subscription required)")
+    parser = argparse.ArgumentParser(description="Get prediction market series list (no subscription required)")
     parser.add_argument("--category", default=None, help="Top-level category, e.g. Sports")
     parser.add_argument("--tag", default=None, help="Sub-category, e.g. Football")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output JSON format")

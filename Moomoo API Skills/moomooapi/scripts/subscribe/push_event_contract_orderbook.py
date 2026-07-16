@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Receive Event Contract Order Book Push
+Receive Prediction Market Order Book Push
 
-Function: Subscribe to event contract order book (YES/NO bid/ask) and receive real-time pushes via a Handler
+Function: Subscribe to prediction market order book (YES/NO bid/ask) and receive real-time pushes via a Handler
 Usage: python push_event_contract_orderbook.py EC.KXODIMATCH-26JUL140600INDENG-IND --duration 60 [--json]
 
 API: EventContractOrderBookHandlerBase push (requires set_handler + subscription to SubType.ORDER_BOOK first)
@@ -32,14 +32,14 @@ from common import (
 
 from moomoo import RET_ERROR
 
-# The handler base class is only provided by SDK versions that support Event Contract.
+# The handler base class is only provided by SDK versions that support prediction market.
 # Fall back to `object` on older SDKs so the module imports cleanly (and -h keeps working);
 # the actual availability is enforced in main() via assert_event_contract_support().
 _EC_OB_BASE = EventContractOrderBookHandlerBase if EventContractOrderBookHandlerBase else object
 
 
 class EventContractOrderBookHandler(_EC_OB_BASE):
-    """Event contract order book push callback handler"""
+    """Prediction market order book push callback handler"""
     def __init__(self, output_json=False):
         super().__init__()
         self.output_json = output_json
@@ -65,7 +65,7 @@ class EventContractOrderBookHandler(_EC_OB_BASE):
                     "no_asks": ob.get("no_asks", []),
                 }, ensure_ascii=False, default=str), flush=True)
             else:
-                print(f"\n[EventContract OrderBook Push] {time.strftime('%H:%M:%S')} - {ob.get('code', '')}")
+                print(f"\n[Prediction Market OrderBook Push] {time.strftime('%H:%M:%S')} - {ob.get('code', '')}")
                 for label, key in [("YES bid", "yes_bids"), ("YES ask", "yes_asks"),
                                    ("NO bid", "no_bids"), ("NO ask", "no_asks")]:
                     levels = ob.get(key, [])
@@ -84,10 +84,10 @@ def push_event_contract_orderbook(codes, duration=60, output_json=False):
         ctx.set_handler(handler)
 
         ret, msg = ctx.subscribe_event_contract(codes, [SubType.ORDER_BOOK], subscribe_push=True)
-        check_ret(ret, msg, ctx, "Subscribe event contract order book push")
+        check_ret(ret, msg, ctx, "Subscribe prediction market order book push")
 
         if not output_json:
-            print(f"Subscribed event contract order book push: {', '.join(codes)}")
+            print(f"Subscribed prediction market order book push: {', '.join(codes)}")
             print(f"Waiting for pushes for {duration} seconds...")
 
         time.sleep(duration)
@@ -106,8 +106,8 @@ def push_event_contract_orderbook(codes, duration=60, output_json=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Receive event contract order book push")
-    parser.add_argument("codes", nargs="+", help="Event contract codes, e.g. EC.xxx")
+    parser = argparse.ArgumentParser(description="Receive prediction market order book push")
+    parser.add_argument("codes", nargs="+", help="Prediction market contract codes, e.g. EC.xxx")
     parser.add_argument("--duration", type=int, default=60, help="Duration to receive (seconds, default: 60)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output JSON format")
     args = parser.parse_args()
