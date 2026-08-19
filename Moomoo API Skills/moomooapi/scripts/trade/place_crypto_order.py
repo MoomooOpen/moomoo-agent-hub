@@ -6,9 +6,9 @@
 注意：Crypto 不支持模拟交易，仅支持实盘。
 
 券商支持：
-- FUTUSECURITIES（富途证券 香港）：限价单、市价单
-- FUTUINC（富途 美国）：限价单、市价单
-- FUTUSG（富途 新加坡）：仅限价单
+- FUTUSECURITIES（moomoo 香港）：限价单、市价单
+- FUTUINC（moomoo 美国）：限价单、市价单
+- FUTUSG（moomoo 新加坡）：仅限价单
 
 参数说明：
 - code: CC.BTCUSD / CC.ETHUSD / CC.BTCHKD 等币对代码
@@ -46,10 +46,10 @@ from common import (
 
 
 def _audit_log(entry):
-    """追加交易审计日志到 ~/.futu_trade_audit.jsonl"""
+    """Append trade audit log to ~/.moomoo_trade_audit.jsonl"""
     import datetime
     try:
-        log_path = _os.path.join(_os.path.expanduser("~"), ".futu_trade_audit.jsonl")
+        log_path = _os.path.join(_os.path.expanduser("~"), ".moomoo_trade_audit.jsonl")
         entry["timestamp"] = datetime.datetime.now().isoformat()
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")

@@ -4,7 +4,7 @@ description: moomoo OpenD installation assistant. Automatically downloads and in
 allowed-tools: Bash Read Write Edit WebFetch
 metadata:
   version: 0.1.1
-  author: Futu
+  author: moomoo
 ---
 
 You are the moomoo OpenAPI installation assistant. You automatically download and install moomoo OpenD and upgrade the SDK.

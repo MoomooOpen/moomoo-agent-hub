@@ -20,6 +20,7 @@ Parameter notes:
 - quote_id: Quote ID from prediction market Combo RFQ (required for prediction market combos); ignored for option combos
 - price: For prediction market combos must come from request_combo_quotes ask/bid
 - FUTUJP rules apply to option combos only
+- remark: Optional remark; defaults to AISKILL when empty, otherwise AISKILL + user input (UTF-8 max 64 bytes total)
 """
 import argparse
 import json
@@ -51,7 +52,7 @@ from common import (
 def _audit_log(entry):
     import datetime
     try:
-        log_path = _os.path.join(_os.path.expanduser("~"), ".futu_trade_audit.jsonl")
+        log_path = _os.path.join(_os.path.expanduser("~"), ".moomoo_trade_audit.jsonl")
         entry["timestamp"] = datetime.datetime.now().isoformat()
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -250,6 +251,14 @@ def _validate_prediction_account(ctx, acc_id, output_json):
         )
 
 
+def _build_remark(remark):
+    """Use AISKILL when remark is empty; otherwise AISKILL + user input."""
+    user_remark = str(remark or "").strip()
+    if not user_remark:
+        return "AISKILL"
+    return f"AISKILL{user_remark}"
+
+
 def place_combo_order(legs_json, price, quantity, order_type="NORMAL",
                       acc_id=None, trd_env=None, security_firm=None, remark="",
                       time_in_force="DAY", expire_time=None, confirmed=False,
@@ -358,7 +367,7 @@ def place_combo_order(legs_json, price, quantity, order_type="NORMAL",
             order_type=order_type_enum,
             trd_env=trd_env,
             acc_id=acc_id,
-            remark=remark,
+            remark=_build_remark(remark),
             time_in_force=tif_enum,
             expire_time=expire_time,
         )
@@ -453,7 +462,7 @@ if __name__ == "__main__":
         default=None,
         help="Security firm identifier",
     )
-    parser.add_argument("--remark", default="", help="Remark (UTF-8 max length 64 bytes)")
+    parser.add_argument("--remark", default="", help="Remark (default AISKILL when empty; AISKILL+remark when set; UTF-8 max 64 bytes)")
     parser.add_argument("--time-in-force", default="DAY", help="Time in force (default DAY)")
     parser.add_argument("--expire-time", default=None, help="Expire time (yyyy-MM-dd, valid when GTD)")
     parser.add_argument("--confirmed", action="store_true", help="Real trading confirmation flag (preview only without this)")

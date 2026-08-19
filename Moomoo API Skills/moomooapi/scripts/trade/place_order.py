@@ -17,7 +17,7 @@ Parameter Description:
 - pred_side: Prediction market side YES/NO; required for prediction market orders
 - code: Futures continuous contract codes are automatically converted to actual contract codes; prediction market codes use EC.xxx (no market prefix) via OpenFutureTradeContext
 - adjust_limit: Positive values adjust upward, negative values adjust downward, e.g. 0.015 means upward adjustment range not exceeding 1.5%
-- remark: UTF-8 length limit 64 bytes
+- remark: Optional remark; defaults to AISKILL when empty, otherwise AISKILL + user input (UTF-8 max 64 bytes total)
 - time_in_force: Market orders for HK stocks, A-shares, and global futures only support day validity; use with expire_time when GTD
 - expire_time: Order expiry date yyyy-MM-dd; only valid when time_in_force=GTD
 - fill_outside_rth: For HK pre-market auction and US pre/post market; market orders not supported during pre/post market sessions
@@ -69,10 +69,10 @@ ORDER_SESSION_MAP = {
 
 
 def _audit_log(entry):
-    """Append trade audit log to ~/.futu_trade_audit.jsonl"""
+    """Append trade audit log to ~/.moomoo_trade_audit.jsonl"""
     import datetime
     try:
-        log_path = _os.path.join(_os.path.expanduser("~"), ".futu_trade_audit.jsonl")
+        log_path = _os.path.join(_os.path.expanduser("~"), ".moomoo_trade_audit.jsonl")
         entry["timestamp"] = datetime.datetime.now().isoformat()
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -131,11 +131,20 @@ def _account_has_prediction(row):
     return "PREDICTION" in _parse_trdmarket_auth(row)
 
 
+def _build_remark(remark):
+    """Use AISKILL when remark is empty; otherwise AISKILL + user input."""
+    user_remark = str(remark or "").strip()
+    if not user_remark:
+        return "AISKILL"
+    return f"AISKILL{user_remark}"
+
+
 def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
                 acc_id=None, trd_env=None, security_firm=None, output_json=False,
                 confirmed=False, fill_outside_rth=False, session_str="NONE",
                 jp_acc_type=None, position_id=None,
-                amount=None, pred_side=None, time_in_force="DAY", expire_time=None):
+                amount=None, pred_side=None, time_in_force="DAY", expire_time=None,
+                remark=""):
     acc_id = acc_id or get_default_acc_id()
     trd_env = parse_trd_env(trd_env) if trd_env else get_default_trd_env()
     trd_side = parse_trd_side(side)
@@ -332,6 +341,7 @@ def place_order(code, side, quantity=None, price=None, order_type="NORMAL",
             trd_env=trd_env,
             acc_id=acc_id,
             time_in_force=tif_enum,
+            remark=_build_remark(remark),
         )
         if fill_outside_rth:
             order_kwargs["fill_outside_rth"] = True
@@ -444,6 +454,7 @@ if __name__ == "__main__":
                         help="JP sub-account type (only for FUTUJP accounts; default JP_GENERAL server-side)")
     parser.add_argument("--position-id", default=None,
                         help="Position ID (from position_list_query) for closing/covering a specific JP margin or short position")
+    parser.add_argument("--remark", default="", help="Remark (default AISKILL when empty; AISKILL+remark when set; UTF-8 max 64 bytes)")
     parser.add_argument("--confirmed", action="store_true", help="Real trading confirmation flag (preview only without this flag)")
     parser.add_argument("--json", action="store_true", dest="output_json", help="Output in JSON format")
     args = parser.parse_args()
@@ -454,4 +465,5 @@ if __name__ == "__main__":
                 fill_outside_rth=args.fill_outside_rth, session_str=args.session,
                 jp_acc_type=args.jp_acc_type, position_id=args.position_id,
                 amount=args.amount, pred_side=args.pred_side,
-                time_in_force=args.time_in_force, expire_time=args.expire_time)
+                time_in_force=args.time_in_force, expire_time=args.expire_time,
+                remark=args.remark)

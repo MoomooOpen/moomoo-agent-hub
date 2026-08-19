@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Common utility module - Provides shared functionality for Futu OpenAPI scripts
+Common utility module - Provides shared functionality for moomoo OpenAPI scripts
 
 Includes:
 - Environment variable configuration
@@ -24,8 +24,8 @@ from typing import Optional
 # ============================================================
 
 @dataclass
-class FutuConfig:
-    """Futu OpenAPI configuration class"""
+class MooMooConfig:
+    """moomoo OpenAPI configuration class"""
     # Login credentials
     login_account: Optional[str] = None
     login_pwd: Optional[str] = None
@@ -40,31 +40,39 @@ class FutuConfig:
     security_firm: Optional[str] = None
 
 
-def get_config() -> FutuConfig:
+def _env(name_moomoo: str, name_futu: str, default: str = "") -> str:
+    """Read an env var preferring the MOOMOO_* name, falling back to the legacy FUTU_* name for backward compatibility."""
+    return os.getenv(name_moomoo, os.getenv(name_futu, default))
+
+
+def get_config() -> MooMooConfig:
     """
-    Get Futu OpenAPI configuration
+    Get moomoo OpenAPI configuration
 
     Reads configuration from environment variables, using defaults for unset values.
+    MOOMOO_* variables are preferred; legacy FUTU_* variables are read as a fallback
+    so existing user setups keep working.
 
     Environment variables:
-        - FUTU_LOGIN_ACCOUNT: Futu login account
-        - FUTU_LOGIN_PWD: Futu login password
-        - FUTU_OPEND_HOST: OpenD host address (default: 127.0.0.1)
-        - FUTU_OPEND_PORT: OpenD port (default: 11111)
-        - FUTU_TRD_ENV: Trading environment (default: SIMULATE)
-        - FUTU_DEFAULT_MARKET: Default market (default: US)
+        - MOOMOO_LOGIN_ACCOUNT / FUTU_LOGIN_ACCOUNT: moomoo login account
+        - MOOMOO_LOGIN_PWD / FUTU_LOGIN_PWD: moomoo login password
+        - MOOMOO_OPEND_HOST / FUTU_OPEND_HOST: OpenD host address (default: 127.0.0.1)
+        - MOOMOO_OPEND_PORT / FUTU_OPEND_PORT: OpenD port (default: 11111)
+        - MOOMOO_TRD_ENV / FUTU_TRD_ENV: Trading environment (default: SIMULATE)
+        - MOOMOO_DEFAULT_MARKET / FUTU_DEFAULT_MARKET: Default market (default: NONE)
+        - MOOMOO_SECURITY_FIRM / FUTU_SECURITY_FIRM: Security firm override
 
     Returns:
-        FutuConfig: Configuration object
+        MooMooConfig: Configuration object
     """
-    return FutuConfig(
-        login_account=os.getenv("FUTU_LOGIN_ACCOUNT", ""),
-        login_pwd=os.getenv("FUTU_LOGIN_PWD", ""),
-        opend_host=os.getenv("FUTU_OPEND_HOST", "127.0.0.1"),
-        opend_port=int(os.getenv("FUTU_OPEND_PORT", "11111")),
-        trd_env=os.getenv("FUTU_TRD_ENV", "SIMULATE"),
-        default_market=os.getenv("FUTU_DEFAULT_MARKET", "NONE"),
-        security_firm=os.getenv("FUTU_SECURITY_FIRM", "") or None,
+    return MooMooConfig(
+        login_account=_env("MOOMOO_LOGIN_ACCOUNT", "FUTU_LOGIN_ACCOUNT", ""),
+        login_pwd=_env("MOOMOO_LOGIN_PWD", "FUTU_LOGIN_PWD", ""),
+        opend_host=_env("MOOMOO_OPEND_HOST", "FUTU_OPEND_HOST", "127.0.0.1"),
+        opend_port=int(_env("MOOMOO_OPEND_PORT", "FUTU_OPEND_PORT", "11111")),
+        trd_env=_env("MOOMOO_TRD_ENV", "FUTU_TRD_ENV", "SIMULATE"),
+        default_market=_env("MOOMOO_DEFAULT_MARKET", "FUTU_DEFAULT_MARKET", "NONE"),
+        security_firm=_env("MOOMOO_SECURITY_FIRM", "FUTU_SECURITY_FIRM", "") or None,
     )
 
 
@@ -175,7 +183,7 @@ def _detect_ai_type_support():
         pass
 
 
-def ensure_futu_api():
+def ensure_moomoo_api():
     """Environment check with cache: SDK version + stamp + OpenD connectivity. Full check on first run, skip within TTL."""
     # 1. Cache hit — only do lightweight ai_type support detection
     if _env_check_is_cached():
@@ -204,7 +212,7 @@ def ensure_futu_api():
     _env_check_mark_ok()
     return True
 
-ensure_futu_api()
+ensure_moomoo_api()
 
 from moomoo import (
         OpenQuoteContext,
@@ -776,8 +784,8 @@ def ensure_event_contract_subscribed(ctx, code, sub_type, output_json=None,
 # ============================================================
 
 def get_default_acc_id():
-    """Get default account ID"""
-    return int(os.getenv("FUTU_ACC_ID", "0"))
+    """Get default account ID (MOOMOO_ACC_ID preferred, FUTU_ACC_ID fallback)"""
+    return int(_env("MOOMOO_ACC_ID", "FUTU_ACC_ID", "0"))
 
 
 def get_default_trd_env():
@@ -945,7 +953,7 @@ def _build_permission_hint_json():
 _NO_ACCOUNT_HINT = (
     "No available trading account found. Common causes: 1) The selected security_firm has no "
     "trading account for the target market; 2) the account logged into OpenD does not match the "
-    "target account; 3) crypto accounts must first be opened in the Futu/Moomoo app. "
+    "target account; 3) crypto accounts must first be opened in the moomoo app. "
     "Adjust --security-firm / MOOMOO_SECURITY_FIRM or MOOMOO_TRD_ENV and retry."
 )
 

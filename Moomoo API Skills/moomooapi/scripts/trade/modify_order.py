@@ -42,10 +42,10 @@ from common import (
 
 
 def _audit_log(entry):
-    """Append trade audit log to ~/.futu_trade_audit.jsonl"""
+    """Append trade audit log to ~/.moomoo_trade_audit.jsonl"""
     import datetime
     try:
-        log_path = _os.path.join(_os.path.expanduser("~"), ".futu_trade_audit.jsonl")
+        log_path = _os.path.join(_os.path.expanduser("~"), ".moomoo_trade_audit.jsonl")
         entry["timestamp"] = datetime.datetime.now().isoformat()
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")

@@ -71,7 +71,7 @@ quote_ctx.close()
 
 ## Brokerage Auto-Detection (security_firm)
 
-On the first trading operation, if the environment variable `FUTU_SECURITY_FIRM` is not set, you need to determine the user's brokerage:
+On the first trading operation, if the environment variable `MOOMOO_SECURITY_FIRM` (or legacy `FUTU_SECURITY_FIRM`) is not set, you need to determine the user's brokerage:
 
 1. Run `get_accounts.py --json` to get all accounts (the script automatically iterates through all SecurityFirm values)
 2. Check the `security_firm` field of accounts where `trd_env` is `REAL`
