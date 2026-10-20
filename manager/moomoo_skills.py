@@ -35,6 +35,22 @@ ENV_SKIP_SELF_UPGRADE = "MOOMOO_SKILLHUB_SKIP_SELF_UPGRADE"
 ENV_SELF_UPGRADE_REEXEC = "MOOMOO_SKILLHUB_SELF_UPGRADE_REEXEC"
 ENV_ANNOUNCE_UPDATES = "MOOMOO_SKILLHUB_ANNOUNCE_UPDATES"
 
+MOOMOO_BIN_NAME = "moomoo"
+MOOMOO_CLI_INSTALL_SH_URL = (
+    "https://raw.githubusercontent.com/MoomooOpen/moomoo-cli/main/scripts/install.sh"
+)
+MOOMOO_CLI_INSTALL_PS1_URL = (
+    "https://raw.githubusercontent.com/MoomooOpen/moomoo-cli/main/scripts/install.ps1"
+)
+MOOMOO_CLI_POSIX_DIR_PARTS = (".moomoo", "bin")
+MOOMOO_CLI_POSIX_EXE = "moomoo"
+MOOMOO_CLI_WINDOWS_DIR_PARTS = ("MoomooCLI", "bin")
+MOOMOO_CLI_WINDOWS_EXE = "moomoo.exe"
+MOOMOO_CLI_INSTALL_TIMEOUT_SEC = 180
+MOOMOO_CLI_UPDATE_TIMEOUT_SEC = 120
+MOOMOO_UPDATE_AVAILABLE_MARKER = "Update available:"
+MANAGED_BIN_NAMES = frozenset({MOOMOO_BIN_NAME})
+
 
 def cli_dir() -> Path:
     return Path(__file__).resolve().parent
@@ -207,6 +223,68 @@ def read_skill_version(skill_dir: Path) -> str:
     return m2.group(1).strip() if m2 else ""
 
 
+def _frontmatter_text(skill_dir: Path) -> str:
+    p = skill_dir / "SKILL.md"
+    if not p.is_file():
+        return ""
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    matched = re.match(r"^---\s*\n(.*?)\n---", text, re.DOTALL)
+    return matched.group(1) if matched else ""
+
+
+def read_requires_list(skill_dir: Path, field: str) -> List[str]:
+    """Read a list under any ``requires:`` block in SKILL.md frontmatter.
+
+    ``field`` is the key name, such as ``skills`` or ``bins``. Returns values
+    in declared order, deduped. Empty when frontmatter or the field is absent.
+    """
+    body = _frontmatter_text(skill_dir)
+    if not body:
+        return []
+    key = f"{field}:"
+    in_requires = False
+    requires_indent = -1
+    in_list = False
+    list_indent = -1
+    items: List[str] = []
+    seen: set = set()
+
+    def _push(item: str) -> None:
+        value = item.strip().strip("'\"")
+        if value and value not in seen:
+            seen.add(value)
+            items.append(value)
+
+    for line in body.splitlines():
+        stripped = line.lstrip(" ")
+        indent = len(line) - len(stripped)
+        if not stripped or stripped.startswith("#"):
+            continue
+        if in_list:
+            if indent > list_indent and stripped.startswith("- "):
+                _push(stripped[2:])
+                continue
+            in_list = False
+        if in_requires and indent <= requires_indent:
+            in_requires = False
+        if in_requires and stripped.startswith(key):
+            rest = stripped[len(key):].strip()
+            if rest.startswith("[") and rest.endswith("]"):
+                for item in rest[1:-1].split(","):
+                    _push(item)
+            else:
+                in_list = True
+                list_indent = indent
+            continue
+        if stripped.startswith("requires:"):
+            in_requires = True
+            requires_indent = indent
+    return items
+
+
 def read_skill_deps(skill_dir: Path) -> List[str]:
     """Read declared skill-to-skill deps from SKILL.md frontmatter.
 
@@ -216,56 +294,164 @@ def read_skill_deps(skill_dir: Path) -> List[str]:
     work. Returns slug list in declared order, deduped. Empty list if
     frontmatter is absent or the field is missing.
     """
-    p = skill_dir / "SKILL.md"
-    if not p.is_file():
-        return []
-    try:
-        text = p.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return []
-    m = re.match(r"^---\s*\n(.*?)\n---", text, re.DOTALL)
-    if not m:
-        return []
-    lines = m.group(1).splitlines()
-    in_requires = False
-    requires_indent = -1
-    in_skills_list = False
-    skills_indent = -1
-    deps: List[str] = []
-    seen: set = set()
+    return read_requires_list(skill_dir, "skills")
 
-    def _push(item: str) -> None:
-        s = item.strip().strip("'\"")
-        if s and s not in seen:
-            seen.add(s)
-            deps.append(s)
 
-    for line in lines:
-        stripped = line.lstrip(" ")
-        indent = len(line) - len(stripped)
-        if not stripped or stripped.startswith("#"):
+def read_skill_bins(skill_dir: Path) -> List[str]:
+    """Read ``requires.bins`` from SKILL.md frontmatter, in declared order."""
+    return read_requires_list(skill_dir, "bins")
+
+
+def _moomoo_bin_search_paths() -> List[Path]:
+    posix_bin = Path.home().joinpath(*MOOMOO_CLI_POSIX_DIR_PARTS) / MOOMOO_CLI_POSIX_EXE
+    paths = [posix_bin]
+    local_app = os.environ.get("LOCALAPPDATA", "")
+    if local_app:
+        windows_dir = Path(local_app).joinpath(*MOOMOO_CLI_WINDOWS_DIR_PARTS)
+        paths.append(windows_dir / MOOMOO_CLI_WINDOWS_EXE)
+    return paths
+
+
+def find_managed_bin(name: str) -> Optional[Path]:
+    """Locate an allowlisted external CLI on PATH or its default install dir."""
+    if name != MOOMOO_BIN_NAME:
+        return None
+    for candidate in (name, MOOMOO_CLI_WINDOWS_EXE):
+        found = shutil.which(candidate)
+        if found:
+            return Path(found)
+    for path in _moomoo_bin_search_paths():
+        if path.is_file():
+            return path
+    return None
+
+
+def report_managed_bins(skill_dir: Path, reported: set) -> None:
+    """Print whether allowlisted bins are present. Does not download."""
+    if not skill_dir.is_dir():
+        return
+    for name in read_skill_bins(skill_dir):
+        if name not in MANAGED_BIN_NAMES or name in reported:
             continue
-        if in_skills_list:
-            if indent > skills_indent and stripped.startswith("- "):
-                _push(stripped[2:])
-                continue
-            in_skills_list = False
-        if in_requires:
-            if indent <= requires_indent:
-                in_requires = False
-            elif stripped.startswith("skills:"):
-                rest = stripped[len("skills:"):].strip()
-                if rest.startswith("[") and rest.endswith("]"):
-                    for item in rest[1:-1].split(","):
-                        _push(item)
-                else:
-                    in_skills_list = True
-                    skills_indent = indent
-                continue
-        if stripped.startswith("requires:"):
-            in_requires = True
-            requires_indent = indent
-    return deps
+        reported.add(name)
+        path = find_managed_bin(name)
+        if path is None:
+            print(f"{name}\tmissing (will install)")
+        else:
+            print(f"{name}\tpresent\t{path}")
+
+
+def _install_moomoo_bin_posix() -> None:
+    if shutil.which("curl") is None or shutil.which("sh") is None:
+        raise RuntimeError("curl and sh are required to install moomoo")
+    script = f'curl -fsSL "{MOOMOO_CLI_INSTALL_SH_URL}" | sh'
+    proc = subprocess.run(
+        ["sh", "-c", script],
+        timeout=MOOMOO_CLI_INSTALL_TIMEOUT_SEC,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"moomoo installer exited {proc.returncode}")
+
+
+def _install_moomoo_bin_windows() -> None:
+    powershell = shutil.which("powershell") or shutil.which("powershell.exe")
+    if powershell is None:
+        raise RuntimeError("powershell is required to install moomoo on Windows")
+    with tempfile.TemporaryDirectory() as tmp:
+        script = Path(tmp) / "install.ps1"
+        download_url(
+            MOOMOO_CLI_INSTALL_PS1_URL,
+            script,
+            timeout=MOOMOO_CLI_INSTALL_TIMEOUT_SEC,
+        )
+        proc = subprocess.run(
+            [powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+            timeout=MOOMOO_CLI_INSTALL_TIMEOUT_SEC,
+        )
+    if proc.returncode != 0:
+        raise RuntimeError(f"moomoo installer exited {proc.returncode}")
+
+
+def _install_moomoo_bin() -> None:
+    if sys.platform == "win32":
+        _install_moomoo_bin_windows()
+        return
+    _install_moomoo_bin_posix()
+
+
+def _run_moomoo(bin_path: Path, args: List[str], timeout: int) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [str(bin_path), *args],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
+def _moomoo_has_update(bin_path: Path) -> bool:
+    proc = _run_moomoo(bin_path, ["update", "--check"], MOOMOO_CLI_UPDATE_TIMEOUT_SEC)
+    output = f"{proc.stdout or ''}{proc.stderr or ''}"
+    if proc.returncode != 0:
+        detail = output.strip() or f"exit {proc.returncode}"
+        raise RuntimeError(f"moomoo update --check failed: {detail}")
+    return MOOMOO_UPDATE_AVAILABLE_MARKER in output
+
+
+def _apply_moomoo_update(bin_path: Path) -> None:
+    proc = _run_moomoo(bin_path, ["update"], MOOMOO_CLI_INSTALL_TIMEOUT_SEC)
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip() or f"exit {proc.returncode}"
+        raise RuntimeError(f"moomoo update failed: {detail}")
+
+
+def _ensure_moomoo_bin() -> str:
+    path = find_managed_bin(MOOMOO_BIN_NAME)
+    if path is None:
+        _install_moomoo_bin()
+        if find_managed_bin(MOOMOO_BIN_NAME) is None:
+            raise RuntimeError("moomoo install finished but the binary was not found")
+        print(f"installed {MOOMOO_BIN_NAME}")
+        return "installed"
+    if not _moomoo_has_update(path):
+        verbose(f"{MOOMOO_BIN_NAME}: already current ({path})")
+        return "current"
+    _apply_moomoo_update(path)
+    print(f"updated {MOOMOO_BIN_NAME}")
+    return "updated"
+
+
+def _ensure_one_managed_bin(name: str) -> str:
+    try:
+        if name != MOOMOO_BIN_NAME:
+            return ""
+        return _ensure_moomoo_bin()
+    except (OSError, subprocess.SubprocessError, urllib.error.URLError, TimeoutError, RuntimeError) as exc:
+        print(f"warning: could not install or update {name}: {exc}", file=sys.stderr)
+        return "failed"
+
+
+def ensure_managed_bins(skill_dir: Path, seen: set) -> Dict[str, int]:
+    """Install or update allowlisted bins declared by the skill.
+
+    Each bin name is handled once per ``seen`` set. A bin install failure is
+    counted and printed; it does not raise, so skill file upgrades still finish.
+    """
+    counts = {"installed": 0, "updated": 0, "failed": 0}
+    if not skill_dir.is_dir():
+        return counts
+    for name in read_skill_bins(skill_dir):
+        if name not in MANAGED_BIN_NAMES or name in seen:
+            continue
+        seen.add(name)
+        status = _ensure_one_managed_bin(name)
+        if status in counts:
+            counts[status] += 1
+    return counts
+
+
+def _add_bin_counts(total: Dict[str, int], part: Dict[str, int]) -> None:
+    for key, value in part.items():
+        total[key] = total.get(key, 0) + value
 
 
 def resolve_skill_version(
@@ -1781,6 +1967,7 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
     if args.check_only:
         queue = list(targets)
         seen: set = set()
+        reported_bins: set = set()
         while queue:
             slug = queue.pop(0)
             if slug in seen:
@@ -1803,6 +1990,7 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
             else:
                 status = "no catalog info"
             print(f"{slug}\tlocal={local_ver or '?'}\tremote={remote_ver or '?'}\t{status}{origin}")
+            report_managed_bins(dest, reported_bins)
             _enqueue_deps(dest, queue, seen)
         return
 
@@ -1824,6 +2012,8 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
     migrated = 0
     dep_added = 0
     repo_refreshed: set = set()
+    seen_bins: set = set()
+    bin_counts = {"installed": 0, "updated": 0, "failed": 0}
     while upgrade_queue:
         slug = upgrade_queue.pop(0)
         if slug in processed:
@@ -1845,6 +2035,7 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
             if remote_ver and local_ver and not version_is_newer(remote_ver, local_ver):
                 verbose(f"{slug}: already up to date ({local_ver})")
                 skipped += 1
+                _add_bin_counts(bin_counts, ensure_managed_bins(dest, seen_bins))
                 _enqueue_deps(dest, upgrade_queue, processed)
                 continue
 
@@ -1872,6 +2063,7 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
             else:
                 upgraded += 1
                 print(f"upgraded {slug} -> {ver}")
+            _add_bin_counts(bin_counts, ensure_managed_bins(dest, seen_bins))
             _enqueue_deps(dest, upgrade_queue, processed)
         except SystemExit:
             raise
@@ -1895,6 +2087,12 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
         parts.append(f"{skipped} up to date")
     if failed:
         parts.append(f"{failed} failed")
+    if bin_counts["installed"]:
+        parts.append(f"{bin_counts['installed']} cli installed")
+    if bin_counts["updated"]:
+        parts.append(f"{bin_counts['updated']} cli updated")
+    if bin_counts["failed"]:
+        parts.append(f"{bin_counts['failed']} cli failed")
     if parts:
         print(f"\nSummary: {', '.join(parts)}")
     _refresh_discovery_skill(install_root, meta, skills)

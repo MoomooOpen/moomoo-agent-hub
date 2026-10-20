@@ -1,5 +1,5 @@
 {
-  "updated": "2026-05-12",
+  "updated": "2026-10-20",
   "note": "Published latest versions for installed skills; bump when a skill ships without requiring a new CLI.",
   "deprecations": {
     "install-opend": {
@@ -17,6 +17,10 @@
     "install-moomoo-opend": "0.1.1",
     "moomoo-capital-anomaly": "0.0.1",
     "moomoo-derivatives-anomaly": "0.0.1",
-    "moomoo-technical-anomaly": "0.0.1"
+    "moomoo-technical-anomaly": "0.0.1",
+    "moomoo-quote": "0.0.2",
+    "moomoo-trading": "0.0.2",
+    "moomoo-crypto": "0.0.2",
+    "moomoo-sim-trading": "0.0.2"
   }
 }

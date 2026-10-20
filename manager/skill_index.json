@@ -70,6 +70,42 @@
       "description": "Moomoo technical-analysis anomaly detection",
       "keywords": ["moomoo", "technical", "anomaly", "K-line", "MACD", "RSI", "KDJ", "golden cross", "overbought"],
       "discovery_hint": "Trigger when the user asks about technical signals, K-line patterns, golden/death cross, overbought/oversold, MACD, RSI, KDJ, or other technical indicator anomalies, or gives a broad anomaly request like 'AAPL any anomalies'."
+    },
+    {
+      "slug": "moomoo-quote",
+      "name": "moomoo-quote",
+      "product": "moomoo",
+      "category": "quote-trade",
+      "description": "Moomoo CLI market data: quotes, K-line, snapshots, order book, capital flow, and screeners",
+      "keywords": ["moomoo", "quote", "price", "kline", "snapshot", "order book", "capital flow", "option chain", "watchlist"],
+      "discovery_hint": "Trigger when the user wants market data through the moomoo CLI: quotes, K-line, snapshots, tickers, order book, rankings, capital flow, company or financials data, plates, IPO, calendar, watchlist, or stock screening. SKIP: placing, modifying, or canceling orders (→ moomoo-trading, moomoo-crypto, or moomoo-sim-trading)."
+    },
+    {
+      "slug": "moomoo-trading",
+      "name": "moomoo-trading",
+      "product": "moomoo",
+      "category": "quote-trade",
+      "description": "Moomoo CLI securities trading: accounts, funds, positions, and real orders",
+      "keywords": ["moomoo", "trade", "order", "buy", "sell", "position", "account", "funds"],
+      "discovery_hint": "Trigger when the user wants real securities trading through the moomoo CLI: account list, funds, positions, buy, sell, place, modify, cancel, order history, or fills. SKIP: simulated or paper trading (→ moomoo-sim-trading); cryptocurrency orders (→ moomoo-crypto); quote-only questions with no account or order intent (→ moomoo-quote)."
+    },
+    {
+      "slug": "moomoo-crypto",
+      "name": "moomoo-crypto",
+      "product": "moomoo",
+      "category": "quote-trade",
+      "description": "Moomoo CLI cryptocurrency trading: crypto accounts, balances, and orders",
+      "keywords": ["moomoo", "crypto", "bitcoin", "BTC", "ETH", "order", "balance"],
+      "discovery_hint": "Trigger when the user wants cryptocurrency exchange trading through the moomoo CLI: crypto accounts, balances, max quantity, crypto orders, or crypto fills. SKIP: securities orders (→ moomoo-trading); simulated trading (→ moomoo-sim-trading); Web3 wallet, swap, or transfer requests."
+    },
+    {
+      "slug": "moomoo-sim-trading",
+      "name": "moomoo-sim-trading",
+      "product": "moomoo",
+      "category": "quote-trade",
+      "description": "Moomoo CLI simulated trading: paper accounts, positions, and simulated orders",
+      "keywords": ["moomoo", "sim", "paper", "demo", "simulated", "order"],
+      "discovery_hint": "Trigger only when the user explicitly asks for simulated, paper, or demo trading, or names moomoo sim commands. SKIP: buy/sell requests that do not say simulated, paper, or demo — ask whether they mean simulation or real trading; real securities orders (→ moomoo-trading); crypto orders (→ moomoo-crypto)."
     }
   ]
 }
