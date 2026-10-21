@@ -6,49 +6,18 @@ metadata:
   requires:
     skills:
       - install-moomoo-opend
-  version: 0.1.1
+  version: 0.1.2
   author: moomoo
 ---
 
-## CLI: Version Update Check
+## Update this skill
 
-Embed the version check into the skill's **single Bash call**. **Do not create any separate tool call** for the version check. The same inline check must detect three things:
-
-1. whether the `moomoo-skills` manager is installed locally;
-2. whether this skill has a new version available;
-3. whether the `moomoo-skills` manager itself has a new version available.
-
-Start the check as a backgrounded subprocess **before** the business command, then append `wait` **after** the business command to collect the result, all in one invocation:
+Add or update this skill with npx. Ask the user before running either command.
 
 ```bash
-( if command -v moomoo-skills >/dev/null 2>&1; then moomoo-skills check --quiet --filter cli --filter moomooapi 2>/dev/null; else echo '__CLI_MISSING__'; fi ) > /tmp/.moomooapi-update 2>/dev/null & python3 -c '...'; wait; cat /tmp/.moomooapi-update 2>/dev/null; rm -f /tmp/.moomooapi-update
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomooapi
+npx skills update moomooapi -g -y
 ```
-
-Based on the `cat` output:
-
-- **No content** (skill is up-to-date or the check failed): do not show any upgrade prompt.
-- **Output `__CLI_MISSING__`** (`moomoo-skills` is not installed locally, so version check/upgrade cannot run): append a notice at the **end** of your reply:
-  > The `moomoo-skills` manager is not installed yet, so I cannot auto-check or upgrade skill versions. If you agree, I can install it for you now.
-
-  If the user agrees, first run:
-  ```bash
-  curl -fsSL "https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/main/moomoo-install.sh" | bash
-  ```
-  After install completes, run `moomoo-skills upgrade moomooapi` to bring this skill to the latest version.
-- **Output containing a line starting with `moomooapi`** (this skill has an update available): append a notice at the **end** of your reply:
-  > `moomooapi` has a new version available. If you agree, I can upgrade it for you right away.
-
-  If the user agrees, run `moomoo-skills upgrade moomooapi` to perform the upgrade. (This command also auto-upgrades the `moomoo-skills` manager itself, so a separate CLI prompt is unnecessary when a skill update is available.)
-- **Output containing only a line starting with `cli`** (this skill is up-to-date but the `moomoo-skills` manager itself has a new version): append a notice at the **end** of your reply:
-  > The `moomoo-skills` manager has a new version available. If you agree, I can upgrade it for you right away.
-
-  If the user agrees, run `moomoo-skills self-upgrade` to perform the upgrade.
-
-  If both a `cli` line and a `moomooapi` line appear, only show the skill upgrade prompt above — the manager will be refreshed as a side effect of `moomoo-skills upgrade moomooapi`.
-
-**Never** run the install command or `moomoo-skills upgrade …` without explicit user consent. Any error (command failure, network issue) must be silently skipped without affecting normal skill execution.
-
-**Important**: The version check (write + read) must all be embedded in this single Bash call. Do not produce any additional tool calls.
 
 ## Language Rules
 
@@ -66,7 +35,15 @@ This skill depends on moomoo **OpenD** (default `127.0.0.1:11111`) to fetch mark
 Silently probe OpenD reachability before any market-data or trading workflow. **Do not announce this step to the user.**
 
 ```bash
-moomoo-skills check-opend
+python3 -c 'import os,socket
+host=os.environ.get("MOOMOO_OPEND_HOST","127.0.0.1")
+port=int(os.environ.get("MOOMOO_OPEND_PORT","11111"))
+try:
+    sock=socket.create_connection((host, port), 2)
+    sock.close()
+    print("ok")
+except OSError:
+    print("not-running")'
 ```
 
 Behavior:

@@ -19,7 +19,7 @@
 
 ## What is Moomoo Agent Hub?
 
-Moomoo Agent Hub is the official AI Agent **SkillHub** by **moomoo**. It is a distributable, self-upgrading skill registry that AI clients can auto-discover, packaging the full power of the Moomoo OpenAPI plus financial-content services into standardized Skills.
+Moomoo Agent Hub is the official AI Agent skill set by **moomoo**. Skills are installed and updated with `npx skills`, packaging the Moomoo OpenAPI plus financial-content services into standardized Skills.
 
 It enables AI assistants to interact with real-time market data, execute trades, retrieve financial news, run anomaly detection, and gauge market sentiment — all through natural language.
 
@@ -52,48 +52,36 @@ Moomoo Agent Hub ships **12 production-ready Skills** across **4 categories**:
 
 ## Quick Start
 
-### 1. Install the SkillHub manager (`moomoo-skills`)
+### 1. Install a skill
 
-The manager is a stdlib-Python CLI that installs / upgrades / uninstalls skills, generates a self-discovery skill for your AI client, and OTA-upgrades itself. One-line installer:
+Node.js 18+ is required. Pick the skill from [Skills Overview](#skills-overview):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/main/moomoo-install.sh | bash
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill <slug>
+npx skills update <slug> -g -y
 ```
 
-This deploys the manager under `~/.moomoo-skillhub/`, drops a `moomoo-skills` wrapper into `~/.local/bin/`, and adds it to your PATH.
+**Flag meanings:** `-y` bypasses interactive prompts; `-g` installs globally for all projects. Remove `-y` to choose specific skills interactively, or omit `-g` to install only in the current project. Omit `--skill` to install every skill in the repo.
 
-Verify:
+`npx skills add` auto-detects Claude Code, Cursor, VS Code, JetBrains, or OpenClaw, and writes to the correct skills directory.
 
-```bash
-moomoo-skills --version
-moomoo-skills detect          # show which AI client / skills dir was detected
-```
-
-### 2. Install a skill
-
-Pick the skill you need from [Skills Overview](#skills-overview), then either:
+`npx skills update` refreshes the current slug and leaves a renamed directory in place. If an older short name is still installed (`news-search`, `stock-digest`, `comment-sentiment`, `install-opend`, `capital-anomaly`, `derivatives-anomaly`, `technical-anomaly`), remove it once, then install again:
 
 ```bash
-# via npx skills (community tool, requires Node 18+)
+bash scripts/migrate-renamed-skills.sh
 npx skills add -y -g MoomooOpen/moomoo-agent-hub
-
-# or via moomoo-skills (recommended — handles deps + version-check injection)
-moomoo-skills install <slug>
 ```
 
-**Flag meanings:** `-y` bypasses interactive prompts; `-g` installs globally for all projects. Remove `-y` to choose specific skills interactively, or omit `-g` to install only in the current project.
+### 2. Runtime dependencies
 
-The manager auto-detects whether you are running inside Claude Code, Cursor, VS Code, JetBrains, or OpenClaw, and writes to the correct skills directory.
-
-### 3. Runtime dependencies
-
-**`moomoo` CLI** — required by the Quote/Trade skills. `moomoo-skills install` and `moomoo-skills upgrade` download it from the [official moomoo-cli installer](https://github.com/MoomooOpen/moomoo-cli/blob/main/README.md) when the binary is missing, and run `moomoo update` when a newer release is available. `moomoo-skills check` and the manager's own self-upgrade do not download it. Adding a skill with `npx skills add` alone does not download it either.
+**`moomoo` CLI** — required by the Quote/Trade skills. The skill itself tells the assistant how to install the CLI. `npx` only installs the skill files.
 
 ```bash
-moomoo-skills install moomoo-quote
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-quote
+npx skills update moomoo-quote -g -y
 ```
 
-The same install runs for `moomoo-trading`, `moomoo-crypto`, and `moomoo-sim-trading`.
+Use the same commands for `moomoo-trading`, `moomoo-crypto`, and `moomoo-sim-trading`. When `moomoo` is missing, the assistant asks, then runs the [official moomoo-cli installer](https://github.com/MoomooOpen/moomoo-cli/blob/main/README.md). An existing CLI is updated with `moomoo update`.
 
 **OpenD** — required only for **API** and **Anomaly** skills. Easiest path: just say it to your AI assistant and it will run the installer skill for you:
 
@@ -103,7 +91,7 @@ The same install runs for `moomoo-trading`, `moomoo-crypto`, and `moomoo-sim-tra
 
 > Using the Moomoo API requires API access enabled — complete the questionnaire and agreement in the moomoo app. See the [permission guide](https://openapi.moomoo.com/moomoo-api-doc/intro/authority.html).
 
-### 4. Start using
+### 3. Start using
 
 ```
 > Show me Tesla's real-time quote
@@ -126,9 +114,27 @@ Four skills that call the local [`moomoo` CLI](https://github.com/MoomooOpen/moo
 | `moomoo-crypto` | Cryptocurrency exchange accounts, balances, orders, and fills. |
 | `moomoo-sim-trading` | Simulated or paper trading only. A plain "buy" or "sell" does not select this skill. |
 
-Each skill declares `requires.bins: [moomoo]`. On `moomoo-skills install` and `moomoo-skills upgrade`, the manager installs that CLI if it is missing and updates it when a newer release exists. One upgrade handles the binary once, even if several of these skills are in the same run. A CLI install failure is printed in the upgrade summary and does not roll back the skill files.
+Each skill declares `requires.bins: [moomoo]` and includes the install steps. Add or update a skill with npx:
 
-The binary is installed to `~/.moomoo/bin/moomoo` on macOS and Linux, and to `%LOCALAPPDATA%\MoomooCLI\bin\moomoo.exe` on Windows.
+```bash
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-quote
+npx skills update moomoo-quote -g -y
+```
+
+If `moomoo` is missing, the skill asks before installing it:
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/MoomooOpen/moomoo-cli/main/scripts/install.sh | sh
+```
+
+```powershell
+# Windows PowerShell
+iwr -UseBasicParsing https://raw.githubusercontent.com/MoomooOpen/moomoo-cli/main/scripts/install.ps1 -OutFile install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+The binary is installed to `~/.moomoo/bin/moomoo` on macOS and Linux, and to `%LOCALAPPDATA%\MoomooCLI\bin\moomoo.exe` on Windows. Update an existing CLI with `moomoo update`.
 
 **Example prompts:**
 ```
@@ -164,7 +170,11 @@ Wraps the entire [Moomoo OpenAPI](https://openapi.moomoo.com/moomoo-api-doc/) in
 
 ### `install-moomoo-opend` — OpenD Installer
 
-Detects your platform (Windows / macOS / CentOS / Ubuntu), downloads the matching Moomoo OpenD release, sets up the Python SDK, and verifies the local TCP gateway. The API and Anomaly skills declare it as a `requires.skills` dependency, so the manager will pull it in automatically when needed.
+Detects your platform (Windows / macOS / CentOS / Ubuntu), downloads the matching Moomoo OpenD release, sets up the Python SDK, and verifies the local TCP gateway. The API and Anomaly skills list it under `metadata.requires.skills`. Install it alongside those skills:
+
+```bash
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill install-moomoo-opend
+```
 
 ---
 
@@ -178,7 +188,7 @@ Three skills for "is anything odd happening with this stock?" detection. Each ca
 | `moomoo-derivatives-anomaly` | "options / IV / PCR / warrants" | Implied volatility, put/call ratio, unusual option activity, warrant flow |
 | `moomoo-technical-anomaly` | "K-line / MACD / RSI / overbought / golden cross" | Pattern detection across MACD, RSI, KDJ, CCI, K-line shapes |
 
-Each skill declares `metadata.requires.skills: [install-moomoo-opend, moomooapi]`, so installing one of them via `moomoo-skills install` will pull in OpenD setup automatically.
+Each skill declares `metadata.requires.skills: [install-moomoo-opend, moomooapi]`. Install those skills as well. Before running, the skill probes `127.0.0.1:11111` itself and, if OpenD is down, hands off to `/install-moomoo-opend`.
 
 **Example prompts:**
 ```
@@ -221,34 +231,6 @@ Search for the latest news on NVIDIA
 
 ---
 
-## SkillHub manager (`moomoo-skills`)
-
-The manager isn't required for skills to work — but it gives you self-upgrade, dependency resolution, and a self-discovery skill that lets your AI client suggest uninstalled skills when relevant.
-
-Subcommand cheatsheet:
-
-```
-moomoo-skills search <q>            # search the skill index
-moomoo-skills list                  # already-installed skills
-moomoo-skills install <slug>        # install (recursively pulls deps)
-moomoo-skills upgrade [<slug>]      # upgrade one or all
-moomoo-skills uninstall <slug>
-moomoo-skills check                 # CLI + skill update check
-moomoo-skills self-upgrade          # upgrade the CLI itself
-moomoo-skills detect                # show the AI client + skills dir it picks
-moomoo-skills refresh-discovery     # regenerate the auto-discovery SKILL.md
-```
-
-**Auto self-upgrade.** On every invocation the CLI silently checks `cli_update_manifest.json`; if a newer version is published it `git clone`s the new manager code and `os.execv`s itself with the same args. Disable with `--skip-self-upgrade` or `MOOMOO_SKILLHUB_SKIP_SELF_UPGRADE=1`. This updates the manager only. It does not install the `moomoo` CLI.
-
-**`moomoo` CLI dependency.** Quote/Trade skills declare `requires.bins: [moomoo]`. `install` and `upgrade` install that binary when it is missing, using the [official moomoo-cli installer](https://github.com/MoomooOpen/moomoo-cli/blob/main/README.md), and run `moomoo update` when `moomoo update --check` reports a newer release. `check` and `upgrade --check-only` only report whether the binary is present. Other `requires.bins` entries, such as `curl` or `python3`, are not installed.
-
-**Self-discovery skill.** Every install/uninstall/upgrade refreshes `<skills-dir>/_moomoo-skillhub/SKILL.md`, listing all *not-yet-installed* skills together with their `discovery_hint` and the exact `npx skills add` command. AI clients load it as a regular skill, so when a user query matches an uninstalled skill's hint, the assistant prompts the user to install it. Once everything is installed, the discovery skill is removed.
-
-**Per-product isolation.** This hub manages only `product=moomoo` skills. Coexists cleanly with `futu-skillhub` on the same machine — each manager touches only its own product.
-
----
-
 ## Architecture
 
 ```
@@ -261,7 +243,7 @@ moomoo-skills refresh-discovery     # regenerate the auto-discovery SKILL.md
 ┌──────────────────────────────────────────────────────────────────┐
 │                    Moomoo Agent Hub                               │
 │                                                                   │
-│   moomoo-skills CLI ─── install / upgrade / self-discovery        │
+│   npx skills add / npx skills update                              │
 │                                                                   │
 │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌───────────────┐  │
 │  │Quote/Trade │ │ Moomoo API │ │  Anomaly   │ │Search/Content │  │
@@ -286,16 +268,7 @@ moomoo-skills refresh-discovery     # regenerate the auto-discovery SKILL.md
   └────────────────────────────────────────┘
 ```
 
-Source-of-truth files in this repo:
-
-| File | Purpose |
-|------|---------|
-| `manager/version.json` | CLI version baseline (OTA gate) |
-| `manager/cli_update_manifest.json` | OTA manifest — bump version + push to roll out new CLI |
-| `manager/metadata.json` | Hub config (`hub_name`, repo URL/ref, etc.) |
-| `manager/skill_index.json` | Skill catalog with discovery hints, drives search + self-discovery |
-| `manager/skill_catalog.json` | Per-skill latest version + deprecation/migration table |
-| `skill-self-upgrade.md` | Maintainer guide for embedding the CLI version-check block in SKILL.md |
+Each skill under `skills/` is self-contained. `SKILL.md` frontmatter holds `metadata.version` and `requires`. Install and update commands live in the skill.
 
 ---
 
@@ -317,13 +290,10 @@ Source-of-truth files in this repo:
 A: No. Only the **API** and **Anomaly** skills need OpenD. **Quote/Trade** skills use the `moomoo` CLI instead. **Search/Content** skills call public HTTP and need neither.
 
 **Q: When is the `moomoo` CLI downloaded?**
-A: Only when you run `moomoo-skills install` or `moomoo-skills upgrade` for a skill that declares `requires.bins: [moomoo]`. `check`, `upgrade --check-only`, and the manager's own self-upgrade do not download it. Installing a skill with `npx skills add` alone does not download it either.
+A: When a Quote/Trade skill is in use and `moomoo` is missing. The skill asks first, then runs the official installer. `npx skills add` and `npx skills update` only install or update the skill files.
 
-**Q: Can I install skills without `moomoo-skills`?**
-A: Yes — `npx skills add` works directly. But you'll lose auto-upgrade, dependency resolution, the self-discovery skill, and automatic installation of the `moomoo` CLI for Quote/Trade skills.
-
-**Q: Can `moomoo-skills` and `futu-skills` coexist?**
-A: Yes. Each manager manages only its own product (`hub_name` in `metadata.json` carries the product), so they don't interfere.
+**Q: How do I update a skill?**
+A: `npx skills update <slug> -g -y`. Each skill lists this command under "Update this skill" or "Install the moomoo CLI".
 
 **Q: Is there any additional fee?**
 A: No. Trading through Moomoo OpenAPI incurs no fees beyond standard brokerage commissions.

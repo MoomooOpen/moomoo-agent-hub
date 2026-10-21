@@ -1,6 +1,6 @@
 # moomoo Skill Installation Guide
 
-Install moomoo Skills into your AI client in three steps.
+Install moomoo Skills into your AI client in two steps.
 
 ---
 
@@ -8,34 +8,15 @@ Install moomoo Skills into your AI client in three steps.
 
 | Dependency | Purpose | Check |
 |------------|---------|-------|
-| `python3` | Runs anomaly-detection scripts and the `moomoo-skills` CLI | `python3 --version` |
-| `curl` | Downloads the installer | `curl --version` |
+| `python3` | Runs anomaly-detection scripts and the OpenD reachability probe | `python3 --version` |
+| `curl` | Downloads the moomoo CLI installer and OpenD assets | `curl --version` |
 | Node.js 18+ | Provides `npx` for `npx skills add` | `node -v` |
 
 > macOS ships `python3` and `curl`. Linux: `apt install python3 curl` / `yum install python3 curl`. Windows: WSL or Git Bash + the official Node.js installer.
 
 ---
 
-## Step 1 — Install the `moomoo-skills` CLI
-
-`moomoo-skills` manages skill versions and self-upgrades.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/MoomooOpen/moomoo-agent-hub/main/moomoo-install.sh | bash
-```
-
-Verify:
-
-```bash
-moomoo-skills --version
-moomoo-skills check        # Check for skill updates
-```
-
-If `moomoo-skills` is not found, ensure `~/.local/bin` (or `/usr/local/bin`) is in your `PATH`, or open a new terminal.
-
----
-
-## Step 2 — Install Skill Files
+## Step 1 — Install Skill Files
 
 Install search and anomaly-detection skills into your AI client's skills directory:
 
@@ -51,8 +32,15 @@ Other useful invocations:
 # Switch to another branch / tag / commit
 npx skills add -y -g MoomooOpen/moomoo-agent-hub#<branch-or-tag>
 
-# Upgrade installed skills
-npx skills update moomoo-skill
+# Upgrade one installed skill
+npx skills update <slug> -g -y
+```
+
+`npx skills update` refreshes the current slug and leaves a renamed directory in place. If an older short name is still installed (`news-search`, `stock-digest`, `comment-sentiment`, `install-opend`, `capital-anomaly`, `derivatives-anomaly`, `technical-anomaly`), remove it once, then install again:
+
+```bash
+bash scripts/migrate-renamed-skills.sh
+npx skills add -y -g MoomooOpen/moomoo-agent-hub
 ```
 
 ### Per-Client Targets
@@ -70,13 +58,13 @@ npx skills update moomoo-skill
 
 ---
 
-## Step 3 — Install OpenD (required for OpenAPI / Anomaly Skills)
+## Step 2 — Install OpenD (required for OpenAPI / Anomaly Skills)
 
 OpenAPI Skills and Anomaly Detection Skills need the OpenD service running locally.
 
-After Step 2 completes, invoke `/install-moomoo-opend` in your AI client. The skill directly downloads, installs, and starts OpenD (Windows / macOS / Linux supported) — no extra confirmation needed.
+After Step 1 completes, invoke `/install-moomoo-opend` in your AI client. The skill directly downloads, installs, and starts OpenD (Windows / macOS / Linux supported) — no extra confirmation needed.
 
-If `/install-moomoo-opend` is not registered, re-run Step 2 to make sure all skills from this repo are installed.
+If `/install-moomoo-opend` is not registered, re-run Step 1 to make sure all skills from this repo are installed.
 
 ---
 
@@ -104,6 +92,6 @@ Some clients require a restart or a new chat session to pick up newly installed 
 
 - OpenD must be running and logged in (status: connected)
 - Default port `11111`
-- If OpenD is not installed, run `/install-moomoo-opend` (see Step 3)
+- If OpenD is not installed, run `/install-moomoo-opend` (see Step 2)
 
 </details>
