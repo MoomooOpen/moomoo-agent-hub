@@ -8,11 +8,11 @@ Install moomoo Skills into your AI client in two steps.
 
 | Dependency | Purpose | Check |
 |------------|---------|-------|
-| `python3` | Runs anomaly-detection scripts and the OpenD reachability probe | `python3 --version` |
-| `curl` | Downloads the moomoo CLI installer and OpenD assets | `curl --version` |
+| `curl` | Content skills and CLI installer download | `curl --version` |
 | Node.js 18+ | Provides `npx` for `npx skills add` | `node -v` |
+| `moomoo` CLI | Quote, trading, and anomaly skills | `moomoo version` |
 
-> macOS ships `python3` and `curl`. Linux: `apt install python3 curl` / `yum install python3 curl`. Windows: WSL or Git Bash + the official Node.js installer.
+> Upgrading from OpenD: [upgrade-from-opend.md](./upgrade-from-opend.md). Gaps and REST backlog: [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md).
 
 ---
 
@@ -58,13 +58,18 @@ npx skills add -y -g MoomooOpen/moomoo-agent-hub
 
 ---
 
-## Step 2 — Install OpenD (required for OpenAPI / Anomaly Skills)
+## Step 2 — Install and authorize moomoo CLI
 
-OpenAPI Skills and Anomaly Detection Skills need the OpenD service running locally.
+Quote, trading, and anomaly skills use the **`moomoo` CLI** (OAuth). OpenD is **not** required.
 
-After Step 1 completes, invoke `/install-moomoo-opend` in your AI client. The skill directly downloads, installs, and starts OpenD (Windows / macOS / Linux supported) — no extra confirmation needed.
+```bash
+moomoo version
+moomoo auth login
+moomoo auth status --format json
+moomoo check
+```
 
-If `/install-moomoo-opend` is not registered, re-run Step 1 to make sure all skills from this repo are installed.
+Anomaly skills use `moomoo anomaly ...` when available — see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md).
 
 ---
 
@@ -88,10 +93,10 @@ Some clients require a restart or a new chat session to pick up newly installed 
 </details>
 
 <details>
-<summary><b>OpenAPI connection fails</b></summary>
+<summary><b><code>moomoo</code> CLI fails</b></summary>
 
-- OpenD must be running and logged in (status: connected)
-- Default port `11111`
-- If OpenD is not installed, run `/install-moomoo-opend` (see Step 2)
+- Run `moomoo auth status` — if not logged in, run `moomoo auth login`
+- Run `moomoo check`
+- Unknown `moomoo anomaly`: see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md)
 
 </details>

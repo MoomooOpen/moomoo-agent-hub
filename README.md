@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-quote--trade-skills">Quote & Trade Skills</a> · <a href="#-moomoo-api-skills">Moomoo API Skills</a> · <a href="#-anomaly-skills">Anomaly Skills</a> · <a href="#-search--content-skills">Search & Content Skills</a> · <a href="#-architecture">Architecture</a>
+  <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-quote--trade-skills">Quote & Trade Skills</a> · <a href="#-anomaly-skills">Anomaly Skills</a> · <a href="#-search--content-skills">Search & Content Skills</a> · <a href="#-architecture">Architecture</a>
 </p>
 
 
@@ -29,24 +29,22 @@ Works with **Claude Code**, **Cursor**, **Claude Desktop**, **VS Code**, **JetBr
 
 ## Skills Overview
 
-Moomoo Agent Hub ships **12 production-ready Skills** across **4 categories**:
+Moomoo Agent Hub ships **10 production-ready Skills** (quote/trade, anomaly, content). **No OpenD** required.
 
 | Category | Skill | Description | Requires |
 |----------|-------|-------------|----------|
-| **Quote / Trade** | `moomoo-quote` | Market data via the `moomoo` CLI — quotes, K-line, order book, capital flow, screeners | `moomoo` CLI |
+| **Quote / Trade** | `moomoo-quote` | Market data via the `moomoo` CLI | `moomoo` CLI |
 | **Quote / Trade** | `moomoo-trading` | Real securities accounts, funds, positions, orders, and fills | `moomoo` CLI |
-| **Quote / Trade** | `moomoo-crypto` | Cryptocurrency exchange accounts, balances, orders, and fills | `moomoo` CLI |
+| **Quote / Trade** | `moomoo-crypto` | Cryptocurrency accounts, balances, orders, and fills | `moomoo` CLI |
 | **Quote / Trade** | `moomoo-sim-trading` | Simulated / paper accounts, positions, and orders | `moomoo` CLI |
-| **Moomoo API** | `moomooapi` | Full Moomoo OpenAPI — quotes, K-lines, order placement, positions, account management | OpenD |
-| **Moomoo API** | `install-moomoo-opend` | One-shot installer for Moomoo OpenD + Python SDK | — |
-| **Anomaly** | `moomoo-capital-anomaly` | Capital-flow anomalies — fund distribution, broker activity, short-sell signals | OpenD |
-| **Anomaly** | `moomoo-derivatives-anomaly` | Derivatives anomalies — option IV / PCR / unusual activity / warrants | OpenD |
-| **Anomaly** | `moomoo-technical-anomaly` | Technical anomalies — K-line patterns, MACD / RSI / KDJ, golden/death cross | OpenD |
-| **Search / Content** | `moomoo-news-search` | Search news, notices, research reports across the moomoo platform | — |
-| **Search / Content** | `moomoo-stock-digest` | Aggregated single-stock news digest with directional analysis | — |
-| **Search / Content** | `moomoo-comment-sentiment` | Community comment sentiment + KOL viewpoints | — |
+| **Anomaly** | `moomoo-capital-anomaly` | `moomoo anomaly capital` — capital-flow signals | `moomoo` CLI |
+| **Anomaly** | `moomoo-derivatives-anomaly` | `moomoo anomaly derivatives` — options / warrants | `moomoo` CLI |
+| **Anomaly** | `moomoo-technical-anomaly` | `moomoo anomaly technical` — technical signals | `moomoo` CLI |
+| **Search / Content** | `moomoo-news-search` | News, notices, research search | `curl` |
+| **Search / Content** | `moomoo-stock-digest` | Single-stock news digest | `curl` |
+| **Search / Content** | `moomoo-comment-sentiment` | Community sentiment | `curl` |
 
-`/install-moomoo-opend` is **only** required by the API and Anomaly skills. Quote/Trade skills use the [`moomoo` CLI](https://github.com/MoomooOpen/moomoo-cli) instead. Search/Content skills call public HTTP endpoints and need neither.
+Removed: **`moomooapi` / `install-moomoo-opend`**. See [`docs/upgrade-from-opend.md`](docs/upgrade-from-opend.md) and [`docs/migration-gaps-and-rest-api.md`](docs/migration-gaps-and-rest-api.md).
 
 ---
 
@@ -83,13 +81,9 @@ npx skills update moomoo-quote -g -y
 
 Use the same commands for `moomoo-trading`, `moomoo-crypto`, and `moomoo-sim-trading`. When `moomoo` is missing, the assistant asks, then runs the [official moomoo-cli installer](https://github.com/MoomooOpen/moomoo-cli/blob/main/README.md). An existing CLI is updated with `moomoo update`.
 
-**OpenD** — required only for **API** and **Anomaly** skills. Easiest path: just say it to your AI assistant and it will run the installer skill for you:
+**Anomaly skills** — same `moomoo` CLI as quote/trade; use `moomoo anomaly` subcommands when released (see [migration-gaps-and-rest-api.md](docs/migration-gaps-and-rest-api.md)).
 
-```
-/install-moomoo-opend
-```
-
-> Using the Moomoo API requires API access enabled — complete the questionnaire and agreement in the moomoo app. See the [permission guide](https://openapi.moomoo.com/moomoo-api-doc/intro/authority.html).
+> Quote/trade/anomaly need OAuth via `moomoo auth login` and app permissions where applicable.
 
 ### 3. Start using
 
@@ -146,49 +140,15 @@ Paper-trade a limit buy for US.AAPL
 
 ---
 
-## Moomoo API Skills
-
-### `moomooapi` — Trading & Market Data
-
-Wraps the entire [Moomoo OpenAPI](https://openapi.moomoo.com/moomoo-api-doc/) into an AI-callable interface.
-
-| Capability | Description |
-|------------|-------------|
-| Real-time Quotes | Live prices for stocks, ETFs, options, futures, indices |
-| K-line / Candlestick | Historical and real-time K-line at any granularity |
-| Order Book | Full depth bid/ask order book |
-| Tick-by-Tick | Trade-level tick data |
-| Time-sharing | Intraday time-sharing chart data |
-| Snapshots | Batch market snapshots |
-| Sector Quotes | Sector / industry lists and constituents |
-| Options Chain | Expiry dates, strike prices, full options chain |
-| Place / Modify / Cancel Order | Market / limit / conditional, all amend/cancel paths |
-| Account & Funds | Account list, available cash, buying power, margin |
-| Positions | Current holdings with P&L |
-
-**Supported markets:** Hong Kong, US (NYSE/AMEX/NASDAQ), China A-shares, Singapore, Japan.
-
-### `install-moomoo-opend` — OpenD Installer
-
-Detects your platform (Windows / macOS / CentOS / Ubuntu), downloads the matching Moomoo OpenD release, sets up the Python SDK, and verifies the local TCP gateway. The API and Anomaly skills list it under `metadata.requires.skills`. Install it alongside those skills:
-
-```bash
-npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill install-moomoo-opend
-```
-
----
-
 ## Anomaly Skills
 
-Three skills for "is anything odd happening with this stock?" detection. Each calls Moomoo OpenD's `get_*_unusual()` family via local Python scripts.
+Three skills for "is anything odd happening with this stock?" detection via **`moomoo anomaly`** CLI (requires CLI/API release — see [migration-gaps-and-rest-api.md](docs/migration-gaps-and-rest-api.md)).
 
 | Skill | Triggers on | Signals |
 |-------|------------|---------|
 | `moomoo-capital-anomaly` | "capital flow / fund flow / short sell / who's buying" | Fund distribution, broker buy/sell, capital flow trend, short-sell volume & ratio |
 | `moomoo-derivatives-anomaly` | "options / IV / PCR / warrants" | Implied volatility, put/call ratio, unusual option activity, warrant flow |
 | `moomoo-technical-anomaly` | "K-line / MACD / RSI / overbought / golden cross" | Pattern detection across MACD, RSI, KDJ, CCI, K-line shapes |
-
-Each skill declares `metadata.requires.skills: [install-moomoo-opend, moomooapi]`. Install those skills as well. Before running, the skill probes `127.0.0.1:11111` itself and, if OpenD is down, hands off to `/install-moomoo-opend`.
 
 **Example prompts:**
 ```
@@ -201,7 +161,7 @@ Are there any anomalies for NVDA today?
 
 ## Search & Content Skills
 
-Three skills calling public moomoo HTTP endpoints — **no OpenD required**.
+Three skills calling public moomoo HTTP endpoints — **no moomoo CLI required**.
 
 ### `moomoo-news-search` — News Search
 
@@ -245,27 +205,22 @@ Search for the latest news on NVIDIA
 │                                                                   │
 │   npx skills add / npx skills update                              │
 │                                                                   │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌───────────────┐  │
-│  │Quote/Trade │ │ Moomoo API │ │  Anomaly   │ │Search/Content │  │
-│  │            │ │            │ │            │ │               │  │
-│  │ quote      │ │ moomooapi  │ │ capital    │ │ news-search   │  │
-│  │ trading    │ │ install-   │ │ derivatives│ │ stock-digest  │  │
-│  │ crypto     │ │   opend    │ │ technical  │ │ sentiment     │  │
-│  │ sim        │ │            │ │            │ │               │  │
-│  └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └──────┬────────┘  │
-│        │              │              │               │           │
-└────────┼──────────────┼──────────────┼───────────────┼───────────┘
-         │              │              │               │
-         ▼              ▼              ▼               ▼
-  ┌─────────────┐ ┌──────────┐  ┌──────────┐  ┌─────────────────┐
-  │ moomoo CLI  │ │  OpenD   │  │  OpenD   │  │  Public HTTP    │
-  │ (local bin) │ │(local TCP)│  │(local TCP)│  │ ai-news-search  │
-  └──────┬──────┘ └────┬─────┘  └────┬─────┘  │  .moomoo.com    │
-         │             │             │        └─────────────────┘
-         ▼             ▼             ▼
-  ┌────────────────────────────────────────┐
-  │   Moomoo Servers (HK/US/CN/SG/JP)      │
-  └────────────────────────────────────────┘
+│  ┌─────────────────────┐ ┌────────────┐ ┌───────────────┐  │
+│  │ Quote/Trade         │ │  Anomaly   │ │Search/Content │  │
+│  │ quote/trading/      │ │ capital /  │ │ news-search   │  │
+│  │ crypto/sim          │ │ derivatives│ │ stock-digest  │  │
+│  └──────────┬──────────┘ │ / technical│ │ sentiment     │  │
+│             │            └─────┬──────┘ └──────┬────────┘  │
+└─────────────┼──────────────────┼───────────────┼───────────┘
+              ▼                  ▼               ▼
+       ┌─────────────┐                    ┌─────────────────┐
+       │ moomoo CLI  │                    │  Public HTTP    │
+       │ OAuth+REST  │                    │ ai-news-search  │
+       └──────┬──────┘                    │  .moomoo.com    │
+              ▼                           └─────────────────┘
+       ┌────────────────────────────────────────┐
+       │   Moomoo Servers (HK/US/CN/SG/JP)      │
+       └────────────────────────────────────────┘
 ```
 
 Each skill under `skills/` is self-contained. `SKILL.md` frontmatter holds `metadata.version` and `requires`. Install and update commands live in the skill.
@@ -276,7 +231,7 @@ Each skill under `skills/` is self-contained. `SKILL.md` frontmatter holds `meta
 
 - **Credentials via env vars only** — never hardcoded
 - **Trade confirmation** — write operations require explicit user confirmation
-- **Local-first** — Moomoo API traffic routes through your local OpenD via encrypted TCP
+- **CLI OAuth** — Token stays local; skills do not read token file contents
 - **Quote/Trade CLI** — `moomoo-quote`, `moomoo-trading`, `moomoo-crypto`, and `moomoo-sim-trading` call the local `moomoo` CLI. The CLI attaches OAuth credentials; skills do not read token files
 - **Read-only mode** — restrict to market data queries by omitting trade credentials
 - **Rate limiting** — respects Moomoo OpenAPI's built-in limits
@@ -287,7 +242,7 @@ Each skill under `skills/` is self-contained. `SKILL.md` frontmatter holds `meta
 ## FAQ
 
 **Q: Do I need OpenD for all Skills?**
-A: No. Only the **API** and **Anomaly** skills need OpenD. **Quote/Trade** skills use the `moomoo` CLI instead. **Search/Content** skills call public HTTP and need neither.
+A: No. **Quote/Trade** and **Anomaly** skills use the `moomoo` CLI (OAuth). **Search/Content** skills call public HTTP only. OpenD and `moomooapi` were removed — see [upgrade-from-opend.md](docs/upgrade-from-opend.md).
 
 **Q: When is the `moomoo` CLI downloaded?**
 A: When a Quote/Trade skill is in use and `moomoo` is missing. The skill asks first, then runs the official installer. `npx skills add` and `npx skills update` only install or update the skill files.

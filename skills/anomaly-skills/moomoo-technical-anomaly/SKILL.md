@@ -9,17 +9,15 @@ description: >-
   or gives a broad stock-anomaly request such as “英伟达异动”、“NVDA 异动”、
   “腾讯有没有异动/异常” without narrowing the dimension. For broad anomaly
   requests, this skill should be used together with `capital-anomaly` and
-  `derivatives-anomaly`. Before calling the script, you must first normalize the
+  `derivatives-anomaly`. Before calling the CLI, you must first normalize the
   user-mentioned stock name, Chinese company name, English company name, or
   ticker into a standard symbol such as `US.NVDA` or `HK.00700`.
+allowed-tools: Bash Read
 metadata:
-  version: 0.0.2
+  version: 0.0.3
   requires:
     bins:
-      - python3
-    skills:
-      - install-moomoo-opend
-      - moomooapi
+      - moomoo
   author: moomoo
 license: MIT
 ---
@@ -43,35 +41,11 @@ npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-technical-anomal
 npx skills update moomoo-technical-anomaly -g -y
 ```
 
-## Prerequisite: OpenD Must Be Running
+## Prerequisite: moomoo CLI
 
-This skill depends on moomoo **OpenD** (default `127.0.0.1:11111`) to fetch technical anomaly data. OpenD installation and startup are owned by the peer `install-moomoo-opend` skill — do **not** attempt to detect, install, or start OpenD from inside this skill.
+This skill calls **`moomoo anomaly technical`** (OAuth REST via the official CLI). Do **not** use OpenD, `moomoo-api`, or removed `moomooapi` scripts.
 
-### Pre-flight Check
-
-Silently probe OpenD reachability before the workflow. **Do not announce this step to the user.**
-
-```bash
-python3 -c 'import os,socket
-host=os.environ.get("MOOMOO_OPEND_HOST","127.0.0.1")
-port=int(os.environ.get("MOOMOO_OPEND_PORT","11111"))
-try:
-    sock=socket.create_connection((host, port), 2)
-    sock.close()
-    print("ok")
-except OSError:
-    print("not-running")'
-```
-
-Behavior:
-
-- **`ok`** — proceed straight to the Workflow. Do not mention OpenD or the pre-flight check; the user does not need to see it.
-- **`not-running`** — ask the user for consent in one short, friendly line, e.g.:
-  > This skill needs the local OpenD service (127.0.0.1:11111) to fetch technical anomaly data, but it isn't reachable. Want me to install / start it now via `/install-moomoo-opend`?
-  - If the user agrees, hand off by invoking `/install-moomoo-opend`. Resume this skill's Workflow once OpenD is reachable.
-  - If the user declines, stop here — do **not** execute `scripts/handle_technical_anomaly.py`.
-
-> **Hard rule**: When OpenD is not running, **do not execute `scripts/handle_technical_anomaly.py` directly**. Hand off to `/install-moomoo-opend` first.
+Before the workflow, follow [CLI runtime](../references/cli-runtime.md). If `moomoo anomaly` is not recognized, say anomaly needs a newer CLI — see repo `docs/migration-gaps-and-rest-api.md`.
 
 ---
 
@@ -90,7 +64,7 @@ If the target stock is missing, ask a follow-up question instead of guessing.
 
 ### 2. Normalize the Stock Target into a Standard Symbol
 
-Before calling the script, convert the user-mentioned stock target into a standard symbol such as `US.NVDA`, `HK.00700`, `SH.600519`, or `SZ.000001`.
+Before calling the CLI, convert the user-mentioned stock target into a standard symbol such as `US.NVDA`, `HK.00700`, `SH.600519`, or `SZ.000001`.
 
 Normalization rules:
 
@@ -167,28 +141,24 @@ Default strategy:
 - English user -> `2`
 - If unclear, default to `0`
 
-### 5. Call the Script
-
-After extracting and normalizing the parameters, call the script with a Python 3 interpreter. Prefer `python3`; only fall back to `python` when `python3` is unavailable. This avoids the common macOS case where `python` is not installed or not on `PATH`.
-
-Script entry:
+### 5. Call the CLI
 
 ```bash
-PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" scripts/handle_technical_anomaly.py <STANDARD_SYMBOL> --time-range <DAYS> [--indicator-filters ...] [--language-id <ID>] --json
+moomoo anomaly technical <STANDARD_SYMBOL> --time-range <DAYS> [--indicator-filters <FILTER> ...] [--language-id <ID>] --format json --source skill
 ```
 
 Examples:
 
 ```bash
-PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" scripts/handle_technical_anomaly.py US.NVDA --time-range 7 --json
-PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" scripts/handle_technical_anomaly.py HK.00700 --time-range 7 --indicator-filters MACD RSI6 RSI12 RSI24 --json
-PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" scripts/handle_technical_anomaly.py SH.600519 --time-range 14 --indicator-filters BOLL MA --json
+moomoo anomaly technical US.NVDA --time-range 7 --format json --source skill
+moomoo anomaly technical HK.00700 --time-range 7 --indicator-filters MACD RSI6 RSI12 RSI24 --format json --source skill
+moomoo anomaly technical SH.600519 --time-range 14 --indicator-filters BOLL MA --format json --source skill
 ```
 
 ### 6. Check the Result
 
-- If the script exits successfully, use the returned data to build a structured technical-anomaly summary.
-- If the script returns an error, surface the error message and do not fabricate results.
+- If the CLI exits successfully, use the JSON to build a structured technical-anomaly summary.
+- If the CLI returns an error, surface the error message and do not fabricate results.
 - If a requested indicator has no anomaly in the window, explicitly say `No anomaly`.
 
 ---

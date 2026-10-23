@@ -10,17 +10,15 @@ description: >-
   broad stock-anomaly request such as “英伟达异动”、“NVDA 异动”、“腾讯有没有异动/异常”
   without narrowing the dimension. For broad anomaly requests, this skill should
   be used together with `technical-anomaly` and `capital-anomaly`. Before
-  calling the script, you must first normalize the user-mentioned stock name,
+  calling the CLI, you must first normalize the user-mentioned stock name,
   Chinese company name, English company name, or ticker into a standard symbol
   such as `US.NVDA` or `HK.00700`.
+allowed-tools: Bash Read
 metadata:
-  version: 0.0.2
+  version: 0.0.3
   requires:
     bins:
-      - python3
-    skills:
-      - install-moomoo-opend
-      - moomooapi
+      - moomoo
   author: moomoo
 license: MIT
 ---
@@ -44,35 +42,9 @@ npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-derivatives-anom
 npx skills update moomoo-derivatives-anomaly -g -y
 ```
 
-## Prerequisite: OpenD Must Be Running
+## Prerequisite: moomoo CLI
 
-This skill depends on moomoo **OpenD** (default `127.0.0.1:11111`) to fetch derivatives anomaly data. OpenD installation and startup are owned by the peer `install-moomoo-opend` skill — do **not** attempt to detect, install, or start OpenD from inside this skill.
-
-### Pre-flight Check
-
-Silently probe OpenD reachability before the workflow. **Do not announce this step to the user.**
-
-```bash
-python3 -c 'import os,socket
-host=os.environ.get("MOOMOO_OPEND_HOST","127.0.0.1")
-port=int(os.environ.get("MOOMOO_OPEND_PORT","11111"))
-try:
-    sock=socket.create_connection((host, port), 2)
-    sock.close()
-    print("ok")
-except OSError:
-    print("not-running")'
-```
-
-Behavior:
-
-- **`ok`** — proceed straight to the Workflow. Do not mention OpenD or the pre-flight check; the user does not need to see it.
-- **`not-running`** — ask the user for consent in one short, friendly line, e.g.:
-  > This skill needs the local OpenD service (127.0.0.1:11111) to fetch derivatives anomaly data, but it isn't reachable. Want me to install / start it now via `/install-moomoo-opend`?
-  - If the user agrees, hand off by invoking `/install-moomoo-opend`. Resume this skill's Workflow once OpenD is reachable.
-  - If the user declines, stop here — do **not** execute `scripts/handle_derivatives_anomaly.py`.
-
-> **Hard rule**: When OpenD is not running, **do not execute `scripts/handle_derivatives_anomaly.py` directly**. Hand off to `/install-moomoo-opend` first.
+This skill calls **`moomoo anomaly derivatives`**. Do **not** use OpenD or removed `moomooapi` scripts. Follow [CLI runtime](../references/cli-runtime.md).
 
 ---
 
@@ -162,28 +134,24 @@ Default strategy:
 - English user -> `2`
 - If unclear, default to `0`
 
-### 5. Call the Script
-
-After extracting and normalizing the parameters, call the script with a Python 3 interpreter. Prefer `python3`; only fall back to `python` when `python3` is unavailable. This avoids the common macOS case where `python` is not installed or not on `PATH`.
-
-Script entry:
+### 5. Call the CLI
 
 ```bash
-PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" scripts/handle_derivatives_anomaly.py <STANDARD_SYMBOL> --time-range <DAYS> [--analysis-dimensions ...] [--language-id <ID>] --json
+moomoo anomaly derivatives <STANDARD_SYMBOL> --time-range <DAYS> [--analysis-dimensions <DIM> ...] [--language-id <ID>] --format json --source skill
 ```
 
 Examples:
 
 ```bash
-PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" scripts/handle_derivatives_anomaly.py HK.00700 --time-range 7 --json
-PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" scripts/handle_derivatives_anomaly.py US.NVDA --time-range 7 --analysis-dimensions option_unusual option_volatility --json
-PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" scripts/handle_derivatives_anomaly.py US.AAPL --time-range 7 --analysis-dimensions option_sentiment option_comprehensive --json
+moomoo anomaly derivatives HK.00700 --time-range 7 --format json --source skill
+moomoo anomaly derivatives US.NVDA --time-range 7 --analysis-dimensions option_unusual option_volatility --format json --source skill
+moomoo anomaly derivatives US.AAPL --time-range 7 --analysis-dimensions option_sentiment option_comprehensive --format json --source skill
 ```
 
 ### 6. Check the Result
 
-- If the script exits successfully, use the returned data to build a structured derivatives anomaly summary.
-- If the script returns an error, surface the error message and do not fabricate results.
+- If the CLI exits successfully, use the JSON to build a structured derivatives anomaly summary.
+- If the CLI returns an error, surface the error message and do not fabricate results.
 - If a requested class has no anomaly in the window, explicitly say `No anomaly` or `No anomaly (brief reason)`.
 - If the downstream service reports a permission problem or no accessible data, clearly state that the stock or account lacks the required permission.
 - If the stock is not Hong Kong listed, warrant-related classes should be marked as `N/A` or `No anomaly`.
