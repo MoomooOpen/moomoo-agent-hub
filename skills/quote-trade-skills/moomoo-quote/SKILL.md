@@ -55,9 +55,11 @@ npx skills update moomoo-quote -g -y
 - `history-kline` and `capital --view history` use `--next-time`, not `--next-key`.
 - `watchlist --action add/delete/move-out` mutates the user's watchlist. Confirm target group and symbols unless the user has already explicitly requested that mutation.
 - Do not execute securities, crypto, or simulated trading orders. Use `moomoo-trading` for securities trading, `moomoo-crypto` for cryptocurrency trading, and the simulation trading skill for simulated trading.
+- For **live streaming** (subscribe, push quote/order book/ticker/K-line, real-time **broker queue**), the CLI does not replace OpenD. Direct the user to **Open API Quote Push WebSocket** (`wss://webapi-quote.moomoo.com/ws`): auth, subscribe, broker queue as `BROKER_QUEUE`. Read [WebSocket push reference](references/websocket-push.md) and [websocket-quote-push.md](../../../../docs/websocket-quote-push.md). Do not use OpenD or removed `moomooapi` subscribe scripts.
 
 ## References
 
 - Read [CLI parameters](references/cli-parameters.md) when constructing quote commands, selecting aggregate command variants, or checking required/default flags.
 - Read [dictionaries](references/dictionaries.md) when mapping user language to markets, security types, K-line types, adjustment types, sessions, plate classes, option filters, or interpreting quote enum fields.
 - Read [pagination](references/pagination.md) when fetching multiple pages or explaining how quote pagination works.
+- Read [websocket-push](references/websocket-push.md) when the user needs live push or broker queue instead of one-off REST quotes.

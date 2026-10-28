@@ -44,7 +44,7 @@ Moomoo Agent Hub ships **10 production-ready Skills** (quote/trade, anomaly, con
 | **Search / Content** | `moomoo-stock-digest` | Single-stock news digest | `curl` |
 | **Search / Content** | `moomoo-comment-sentiment` | Community sentiment | `curl` |
 
-Removed: **`moomooapi` / `install-moomoo-opend`**. See [`docs/upgrade-from-opend.md`](docs/upgrade-from-opend.md) and [`docs/migration-gaps-and-rest-api.md`](docs/migration-gaps-and-rest-api.md).
+Removed: **`moomooapi` / `install-moomoo-opend`**. See [`docs/upgrade-from-opend.md`](docs/upgrade-from-opend.md) and [`docs/migration-gaps-and-rest-api.md`](docs/migration-gaps-and-rest-api.md). **Live subscribe and broker queue:** Open API WebSocket — [`docs/websocket-quote-push.md`](docs/websocket-quote-push.md).
 
 ---
 

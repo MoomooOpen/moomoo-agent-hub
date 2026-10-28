@@ -39,6 +39,11 @@ moomoo check
 | Anomalies | `moomoo-*-anomaly` via `moomoo anomaly` (see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md)) |
 | Monolithic moomooapi | **Removed** |
 
-## 5. Unsupported former features
+## 5. Former OpenD subscribe / push / broker queue
 
-Subscribe/push and optional P2 scripts — [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md).
+| Former moomooapi | Now |
+|------------------|-----|
+| `subscribe/*`, `push_*` | **WebSocket** quote push: auth → `subscribe` (`quote`, `order_book`, `ticker`, `kline`) |
+| `get_broker_queue`, `push_broker` | Same WebSocket; message type **`BROKER_QUEUE`** (often with `order_book` on eligible HK symbols) |
+
+Step-by-step: [websocket-quote-push.md](./websocket-quote-push.md). Other gaps: [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md).

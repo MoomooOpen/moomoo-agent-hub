@@ -27,9 +27,9 @@ Upgrade path: [upgrade-from-opend.md](./upgrade-from-opend.md).
 
 Invoked via **`moomoo anomaly *`** — implemented in moomoo-cli (same as futu-cli); gateway/`api_base`联调待验。
 
-### P1 — Subscribe / push (optional; WebSocket)
+### P1 — Subscribe / push (WebSocket)
 
-Former `moomooapi/scripts/subscribe/*`. Hub does not use OpenD TCP push. If product keeps push: **REST for subscribe/unsubscribe + WebSocket for stream** (same pattern as futu hub doc).
+Former `moomooapi/scripts/subscribe/*`. Use **Open API Quote Push WebSocket** (`wss://webapi-quote.moomoo.com/ws`): auth → subscribe → receive pushes by `type`. **Broker queue:** `BROKER_QUEUE` messages (see [websocket-quote-push.md](./websocket-quote-push.md)). `moomoo-quote` stays REST via CLI; streaming requires your own WSS client (`moomoo-cli` has no subscribe subcommand).
 
 ### P2 — Optional parity (see Futu hub doc for script list)
 
@@ -51,7 +51,7 @@ Same **SkillWrap** contract as Futu (from FutuOpenD): OpenD posts JSON to **`htt
 
 Rate limit (OpenD): 30 req / 30 s per proto 3801–3803.
 
-| P1 | REST subscriptions + **WebSocket** quote stream | TBD |
+| P1 | WebSocket quote push + `BROKER_QUEUE` | User guide: [websocket-quote-push.md](./websocket-quote-push.md); Open API [overview](https://open.moomoo.com/api/quote/push/overview) |
 | P2 | Order fees, margin ratio, cash logs | `moomoo order fees`, `moomoo margin-ratio`, `moomoo account cash-logs` |
 
 Parameter enums (`language_id`, `analysis_dimensions`, `indicator_filters`) must match each anomaly SKILL.md.
