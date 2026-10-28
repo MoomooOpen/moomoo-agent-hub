@@ -40,6 +40,8 @@ Securities order and fill list commands auto-page internally. Pass `--page-size`
 | --- | --- | --- | --- |
 | `moomoo account list` | none | none | none |
 | `moomoo account funds` | none if `default_account` is configured | `--currency USD` | `--account`, `--currency` |
+| `moomoo account cash-logs` | `--begin-time`, `--end-time` (microseconds); `--account` if no default account | `--page-size 10` | `--account`, `--direction` (`IN` / `OUT`), `--code`, `--page-flag`, `--page-size` (1–20) |
+| `moomoo margin-ratio` | `--security-firm`, `--codes` (comma-separated, max 10) | none | none |
 | `moomoo position` | none if `default_account` is configured | none | `--account`, `--symbol`, `--pl-ratio-min`, `--pl-ratio-max` |
 
 Examples:
@@ -49,6 +51,10 @@ Examples:
 - Specific currency funds: `moomoo account funds --account <account-id> --currency HKD`
 - Specific position: `moomoo position --symbol US.AAPL`
 - Hong Kong position shorthand normalized by CLI: `moomoo position --symbol HK.700`
+- Cash logs (microsecond `--begin-time` / `--end-time`): `moomoo account cash-logs --account <account-id> --begin-time <us> --end-time <us> --format json`
+- Margin ratio: `moomoo margin-ratio --security-firm FUTUINC --codes US.AAPL --format json`
+
+Cash logs: paginate with `--page-flag` when `completed` is false. See [Open API get-cash-logs](https://open.moomoo.com/api/trading/account/get-cash-logs).
 
 ## Placing Orders
 
@@ -92,6 +98,7 @@ Order placement body mapping:
 | `moomoo order history` | none if `default_account` is configured | `--market HK`, `--page-size 50`, `--start 0`, `--end 0`, no `--symbol` filter | `--account`, `--market`, `--start`, `--end`, `--symbol`, `--page-size` |
 | `moomoo order detail <order-id> [order-id...]` | `order-id`, `--exchange`; `--account` if no default account | none | `--account`, `--exchange` |
 | `moomoo order max-qty <symbol>` | `symbol`; `--account` if no default account | `--type market`, empty `--price`, empty `--order-id` | `--account`, `--price`, `--type`, `--order-id` |
+| `moomoo order fees <order-id>` | `order-id`; `--account` if no default account | none | `--account` |
 | `moomoo deal` | none if `default_account` is configured | `--market HK`, `--page-size 50` | `--account`, `--market`, `--page-size` |
 | `moomoo deal history` | none if `default_account` is configured | `--market HK`, `--page-size 50`, `--start 0`, `--end 0`, no `--symbol` filter | `--account`, `--market`, `--start`, `--end`, `--symbol`, `--page-size` |
 
@@ -109,3 +116,4 @@ Query examples:
 - Max market quantity for Apple: `moomoo order max-qty US.AAPL`
 - Max quantity for Apple at 280 limit: `moomoo order max-qty US.AAPL --price 280 --type limit`
 - Max quantity with no confirmed default account: `moomoo order max-qty US.AAPL --account <account-id> --price 280 --type limit`
+- Order fees: `moomoo order fees <order-id> --account <account-id> --format json` ([get-order-fees](https://open.moomoo.com/api/trading/order/get-order-fees))

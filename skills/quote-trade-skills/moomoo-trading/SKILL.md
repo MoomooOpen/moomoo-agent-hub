@@ -1,9 +1,9 @@
 ---
 name: moomoo-trading
-description: moomoo CLI securities trading skill for OAuth status, accounts, funds, positions, buy/sell/place/modify/cancel orders, order queries, fills, and max tradable quantity; answer in the user's language.
+description: moomoo CLI securities trading skill for OAuth status, accounts, funds, cash logs, order fees, margin ratio, positions, buy/sell/place/modify/cancel orders, order queries, fills, and max tradable quantity; answer in the user's language.
 allowed-tools: Bash Read
 metadata:
-  version: 0.0.3
+  version: 0.0.4
   requires:
     bins:
       - moomoo
@@ -52,7 +52,10 @@ npx skills update moomoo-trading -g -y
 - Add `--format json` only when the agent needs to parse command output. Commands shown for the user to run may use default table output.
 - Securities symbol arguments are `symbol` values in `MARKET.CODE` format, such as `US.AAPL` and `HK.00700`. `HK.700` is normalized to `HK.00700`, and lowercase markets/tickers are uppercased. Do not pass old suffix format like `700.HK` or bare tickers like `AAPL`.
 - Historical `--start` / `--end` filters are microsecond Unix timestamps. Table time columns are displayed in UTC+8; JSON output keeps raw API fields.
-- Order and fill list commands auto-page internally. The user-facing CLI only exposes `--page-size`, not `--page-flag`, for securities trading.
+- Order and fill list commands auto-page internally. The user-facing CLI only exposes `--page-size`, not `--page-flag`, for securities order/fill lists.
+- `account cash-logs` returns one page per call. Use `--format json`, then pass `--page-flag` from the prior response until `completed` is true.
+- `order fees` requires a concrete `order_id`. FX order fees are not supported by the Open API yet.
+- `margin-ratio` requires `--security-firm` and `--codes` (max 10 symbols). Prefer `security_firm` from `account list --format json`.
 - Real account mutations require explicit user confirmation first: `order buy`, `order sell`, `order place`, `order modify`, and `order cancel`.
 - Do not invent broker confirmation. If the CLI reports broker confirmation because the API returned `need_order_confirm=true` / `confirm_id`, relay the prompt and wait for explicit approval before sending `y`.
 

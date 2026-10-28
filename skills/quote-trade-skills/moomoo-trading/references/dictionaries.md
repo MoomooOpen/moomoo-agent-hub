@@ -9,6 +9,8 @@ Account types:
 | `cash` | Cash account |
 | `margin` | Margin account |
 
+`security_firm` (for `moomoo margin-ratio --security-firm`): `FUTUSECURITIES`, `FUTUINC`, `FUTUSG`, `FUTUCA`, `FUTUMY`, `FUTUAU`. Read from `moomoo account list --format json` when unknown.
+
 Account `markets` numeric values:
 
 | Value | Meaning |

@@ -52,7 +52,7 @@ Same **SkillWrap** contract as Futu (from FutuOpenD): OpenD posts JSON to **`htt
 Rate limit (OpenD): 30 req / 30 s per proto 3801–3803.
 
 | P1 | WebSocket quote push + `BROKER_QUEUE` | User guide: [websocket-quote-push.md](./websocket-quote-push.md); Open API [overview](https://open.moomoo.com/api/quote/push/overview) |
-| P2 | Order fees, margin ratio, cash logs | `moomoo order fees`, `moomoo margin-ratio`, `moomoo account cash-logs` |
+| P2 | Order fees, margin ratio, cash logs | `moomoo order fees`, `moomoo margin-ratio`, `moomoo account cash-logs` (**`moomoo-trading`** Skill) |
 
 Parameter enums (`language_id`, `analysis_dimensions`, `indicator_filters`) must match each anomaly SKILL.md.
 
