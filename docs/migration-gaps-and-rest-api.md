@@ -33,7 +33,7 @@ Former `moomooapi/scripts/subscribe/*`. **Open API WSS** replaces OpenD TCP push
 
 ### P2 — Optional parity (see Futu hub doc for script list)
 
-Order fee, margin ratio, account cash flow, crypto cash flow, history K-line quota, broker queue, single warrant quote, option resolve, price reminders, watchlist group CRUD, OpenD-only state probes.
+Order fee, margin ratio, account cash flow, crypto cash flow, broker queue (WSS), warrant/option (CLI), watchlist (CLI), OpenD-only state probes. **Not planned:** price reminders, history K-line **quota** (distinct from `history-kline` data API).
 
 Core quote + live/sim/crypto trade: covered by `moomoo` CLI and four quote/trade skills.
 
