@@ -11,6 +11,9 @@ OLD_SLUGS=(
   capital-anomaly
   derivatives-anomaly
   technical-anomaly
+  moomoo-capital-anomaly
+  moomoo-derivatives-anomaly
+  moomoo-technical-anomaly
   moomooapi
   install-moomoo-opend
 )

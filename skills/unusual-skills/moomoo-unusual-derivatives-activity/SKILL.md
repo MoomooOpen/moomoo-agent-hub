@@ -1,15 +1,15 @@
 ---
-name: moomoo-derivatives-anomaly
+name: moomoo-unusual-derivatives-activity
 description: >-
-  Detects derivatives anomaly signals for a user-mentioned stock with
-  `get_derivative_unusual`, including 牛熊证街货比例、异动、anomaly, 牛熊证街货价格区间、期权大单、
-  隐含波动率、期权量价、期权情绪、期权综合信号 and their unusual changes. Use
-  when the user asks about 期权、衍生品、牛熊证、IV、隐含波动率、PCR、期权大单、
-  期权异常成交、聪明钱、smart money、unusual options activity、做多做空情绪、
-  波动率溢价、期权市场怎么看、有没有大单押注、大资金押注、适不适合卖期权，or gives a
-  broad stock-anomaly request such as “英伟达异动”、“NVDA 异动”、“腾讯有没有异动/异常”
-  without narrowing the dimension. For broad anomaly requests, this skill should
-  be used together with `technical-anomaly` and `capital-anomaly`. Before
+  Unusual Derivatives Activity (衍生品异动): detects derivatives unusual signals
+  for a user-mentioned stock with `get_derivative_unusual`, including 牛熊证街货比例、
+  牛熊证街货价格区间、期权大单、隐含波动率、期权量价、期权情绪、期权综合信号 and their
+  unusual changes. Use when the user asks about 期权、衍生品、牛熊证、IV、隐含波动率、PCR、
+  期权大单、期权异常成交、聪明钱、smart money、unusual options activity、做多做空情绪、
+  波动率溢价、期权市场怎么看、有没有大单押注、大资金押注、适不适合卖期权，or gives a broad
+  异动 request such as “英伟达异动”、“NVDA 异动”、“腾讯有没有异动/异常” without narrowing
+  the dimension. For broad 异动 requests, use together with
+  `moomoo-unusual-technical-signal-alerts` and `moomoo-unusual-capital-flows`. Before
   calling the CLI, you must first normalize the user-mentioned stock name,
   Chinese company name, English company name, or ticker into a standard symbol
   such as `US.NVDA` or `HK.00700`.
@@ -23,13 +23,13 @@ metadata:
 license: MIT
 ---
 
-# Derivatives Anomaly Skill
+# 衍生品异动 · Unusual Derivatives Activity
 
-Detects derivatives anomalies for a specific stock and formats the result as a structured derivatives anomaly summary.
+Detects unusual derivatives activity for a specific stock and formats the result as a structured Unusual Derivatives Activity summary.
 
-This skill is for **anomaly detection** rather than a regular derivatives overview. If the data has no qualifying anomaly, return `No anomaly` or `No anomaly (brief reason)`, and do not add extra market commentary.
+This skill is for **unusual-move detection** rather than a regular derivatives overview. If the data has no qualifying signal, return `No unusual activity` or `No unusual activity (brief reason)`, and do not add extra market commentary.
 
-If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, `腾讯有没有异常` and does not specify a dimension, treat it as a bundled anomaly request. In that case, this skill should be used as one of the three default anomaly skills together with `technical-anomaly` and `capital-anomaly`.
+If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, `腾讯有没有异常` and does not specify a dimension, treat it as a bundled 异动 request. In that case, use this skill together with `moomoo-unusual-technical-signal-alerts` and `moomoo-unusual-capital-flows`.
 
 ---
 
@@ -38,13 +38,13 @@ If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, 
 Add or update this skill with npx. Ask the user before running either command.
 
 ```bash
-npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-derivatives-anomaly
-npx skills update moomoo-derivatives-anomaly -g -y
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-unusual-derivatives-activity
+npx skills update moomoo-unusual-derivatives-activity -g -y
 ```
 
 ## Prerequisite: moomoo CLI
 
-This skill calls **`moomoo anomaly derivatives`**. Do **not** use OpenD or removed `moomooapi` scripts. Follow [CLI runtime](../references/cli-runtime.md).
+This skill calls **`moomoo unusual derivatives-activity`**. Do **not** use OpenD or removed `moomooapi` scripts. Follow [CLI runtime](../references/cli-runtime.md).
 
 ---
 
@@ -137,15 +137,15 @@ Default strategy:
 ### 5. Call the CLI
 
 ```bash
-moomoo anomaly derivatives <STANDARD_SYMBOL> --time-range <DAYS> [--analysis-dimensions <DIM> ...] [--language-id <ID>] --format json --source skill
+moomoo unusual derivatives-activity <STANDARD_SYMBOL> --time-range <DAYS> [--analysis-dimensions <DIM> ...] [--language-id <ID>] --format json --source skill
 ```
 
 Examples:
 
 ```bash
-moomoo anomaly derivatives HK.00700 --time-range 7 --format json --source skill
-moomoo anomaly derivatives US.NVDA --time-range 7 --analysis-dimensions option_unusual option_volatility --format json --source skill
-moomoo anomaly derivatives US.AAPL --time-range 7 --analysis-dimensions option_sentiment option_comprehensive --format json --source skill
+moomoo unusual derivatives-activity HK.00700 --time-range 7 --format json --source skill
+moomoo unusual derivatives-activity US.NVDA --time-range 7 --analysis-dimensions option_unusual option_volatility --format json --source skill
+moomoo unusual derivatives-activity US.AAPL --time-range 7 --analysis-dimensions option_sentiment option_comprehensive --format json --source skill
 ```
 
 ### 6. Check the Result

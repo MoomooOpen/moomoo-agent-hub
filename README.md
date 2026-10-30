@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-quote--trade-skills">Quote & Trade Skills</a> · <a href="#-anomaly-skills">Anomaly Skills</a> · <a href="#-search--content-skills">Search & Content Skills</a> · <a href="#-architecture">Architecture</a>
+  <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-quote--trade-skills">Quote & Trade Skills</a> · <a href="#-unusual-skills">Unusual Skills</a> · <a href="#-search--content-skills">Search & Content Skills</a> · <a href="#-architecture">Architecture</a>
 </p>
 
 
@@ -29,7 +29,7 @@ Works with **Claude Code**, **Cursor**, **Claude Desktop**, **VS Code**, **JetBr
 
 ## Skills Overview
 
-Moomoo Agent Hub ships **10 production-ready Skills** (quote/trade, anomaly, content). **No OpenD** required.
+Moomoo Agent Hub ships **10 production-ready Skills** (quote/trade, unusual, content). **No OpenD** required.
 
 | Category | Skill | Description | Requires |
 |----------|-------|-------------|----------|
@@ -37,9 +37,9 @@ Moomoo Agent Hub ships **10 production-ready Skills** (quote/trade, anomaly, con
 | **Quote / Trade** | `moomoo-trading` | Real securities accounts, funds, positions, orders, and fills | `moomoo` CLI |
 | **Quote / Trade** | `moomoo-crypto` | Cryptocurrency accounts, balances, orders, and fills | `moomoo` CLI |
 | **Quote / Trade** | `moomoo-sim-trading` | Simulated / paper accounts, positions, and orders | `moomoo` CLI |
-| **Anomaly** | `moomoo-capital-anomaly` | `moomoo anomaly capital` — capital-flow signals | `moomoo` CLI |
-| **Anomaly** | `moomoo-derivatives-anomaly` | `moomoo anomaly derivatives` — options / warrants | `moomoo` CLI |
-| **Anomaly** | `moomoo-technical-anomaly` | `moomoo anomaly technical` — technical signals | `moomoo` CLI |
+| **Unusual** | `moomoo-unusual-capital-flows` | Unusual Capital Flows — `moomoo unusual capital-flows` | `moomoo` CLI |
+| **Unusual** | `moomoo-unusual-derivatives-activity` | Unusual Derivatives Activity — `moomoo unusual derivatives-activity` | `moomoo` CLI |
+| **Unusual** | `moomoo-unusual-technical-signal-alerts` | Technical Signal Alerts — `moomoo unusual technical-signals` | `moomoo` CLI |
 | **Search / Content** | `moomoo-news-search` | News, notices, research search | `curl` |
 | **Search / Content** | `moomoo-stock-digest` | Single-stock news digest | `curl` |
 | **Search / Content** | `moomoo-comment-sentiment` | Community sentiment | `curl` |
@@ -81,9 +81,9 @@ npx skills update moomoo-quote -g -y
 
 Use the same commands for `moomoo-trading`, `moomoo-crypto`, and `moomoo-sim-trading`. When `moomoo` is missing, the assistant asks, then runs the [official moomoo-cli installer](https://github.com/MoomooOpen/moomoo-cli/blob/main/README.md). An existing CLI is updated with `moomoo update`.
 
-**Anomaly skills** — same `moomoo` CLI as quote/trade; use `moomoo anomaly` subcommands when released (see [migration-gaps-and-rest-api.md](docs/migration-gaps-and-rest-api.md)).
+**Unusual skills** — same `moomoo` CLI as quote/trade; use `moomoo unusual` subcommands when released (see [migration-gaps-and-rest-api.md](docs/migration-gaps-and-rest-api.md)).
 
-> Quote/trade/anomaly need OAuth via `moomoo auth login` and app permissions where applicable.
+> Quote/trade/unusual need OAuth via `moomoo auth login` and app permissions where applicable.
 
 ### 3. Start using
 
@@ -140,15 +140,15 @@ Paper-trade a limit buy for US.AAPL
 
 ---
 
-## Anomaly Skills
+## Unusual Skills
 
-Three skills for "is anything odd happening with this stock?" detection via **`moomoo anomaly`** CLI (requires CLI/API release — see [migration-gaps-and-rest-api.md](docs/migration-gaps-and-rest-api.md)).
+Three skills for "is anything odd happening with this stock?" — **Unusual Capital Flows**, **Unusual Derivatives Activity**, and **Technical Signal Alerts** — via **`moomoo unusual`** CLI (requires CLI/API release — see [migration-gaps-and-rest-api.md](docs/migration-gaps-and-rest-api.md)).
 
 | Skill | Triggers on | Signals |
 |-------|------------|---------|
-| `moomoo-capital-anomaly` | "capital flow / fund flow / short sell / who's buying" | Fund distribution, broker buy/sell, capital flow trend, short-sell volume & ratio |
-| `moomoo-derivatives-anomaly` | "options / IV / PCR / warrants" | Implied volatility, put/call ratio, unusual option activity, warrant flow |
-| `moomoo-technical-anomaly` | "K-line / MACD / RSI / overbought / golden cross" | Pattern detection across MACD, RSI, KDJ, CCI, K-line shapes |
+| `moomoo-unusual-capital-flows` | "capital flow / fund flow / short sell / who's buying" | Fund distribution, broker buy/sell, capital flow trend, short-sell volume & ratio |
+| `moomoo-unusual-derivatives-activity` | "options / IV / PCR / warrants" | Implied volatility, put/call ratio, unusual option activity, warrant flow |
+| `moomoo-unusual-technical-signal-alerts` | "K-line / MACD / RSI / overbought / golden cross" | Pattern detection across MACD, RSI, KDJ, CCI, K-line shapes |
 
 **Example prompts:**
 ```

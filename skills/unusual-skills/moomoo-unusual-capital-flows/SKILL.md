@@ -1,14 +1,14 @@
 ---
-name: moomoo-capital-anomaly
+name: moomoo-unusual-capital-flows
 description: >-
-  Detects capital-flow anomaly signals for a user-mentioned stock with
-  `get_financial_unusual`, including 资金分布、买卖经纪商、资金流向、卖空数量、
-  卖空比例 and their unusual changes. Use when the user asks about 资金动向、资金异动、
-  净流入、净流出、主力行为、大单小单、谁在买谁在卖、买卖经纪商、卖空异动、
-  卖空/做空/沽空、主力是否在进场或离场，or gives a
-  broad stock-anomaly request such as “英伟达异动”、“NVDA 异动”、“腾讯有没有异动/异常”
-  without narrowing the dimension. For broad anomaly requests, this skill should
-  be used together with `technical-anomaly` and `derivatives-anomaly`. Before
+  Unusual Capital Flows (资金异动): detects capital-flow unusual signals for a
+  user-mentioned stock with `get_financial_unusual`, including 资金分布、买卖经纪商、
+  资金流向、卖空数量、卖空比例 and their unusual changes. Use when the user asks about
+  资金动向、资金异动、净流入、净流出、主力行为、大单小单、谁在买谁在卖、买卖经纪商、
+  卖空异动、卖空/做空/沽空、主力是否在进场或离场，or gives a broad 异动 request such
+  as “英伟达异动”、“NVDA 异动”、“腾讯有没有异动/异常” without narrowing the dimension.
+  For broad 异动 requests, use together with `moomoo-unusual-technical-signal-alerts`
+  and `moomoo-unusual-derivatives-activity`. Before
   calling the CLI, you must first normalize the user-mentioned stock name,
   Chinese company name, English company name, or ticker into a standard symbol
   such as `US.TSLA` or `HK.00700`.
@@ -22,13 +22,13 @@ metadata:
 license: MIT
 ---
 
-# Capital Anomaly Skill
+# 资金异动 · Unusual Capital Flows
 
-Detects capital-flow anomalies for a specific stock and formats the result as a structured capital anomaly summary.
+Detects unusual capital-flow signals for a specific stock and formats the result as a structured Unusual Capital Flows summary.
 
-This skill is for **anomaly detection** rather than a regular capital-flow overview. If the data has no qualifying anomaly, return `No anomaly` or the interface's no-data result, and do not add extra market commentary.
+This skill is for **unusual-move detection** rather than a regular capital-flow overview. If the data has no qualifying signal, return `No unusual activity` or the interface's no-data result, and do not add extra market commentary.
 
-If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, `腾讯有没有异常` and does not specify a dimension, treat it as a bundled anomaly request. In that case, this skill should be used as one of the three default anomaly skills together with `technical-anomaly` and `derivatives-anomaly`.
+If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, `腾讯有没有异常` and does not specify a dimension, treat it as a bundled 异动 request. In that case, use this skill together with `moomoo-unusual-technical-signal-alerts` and `moomoo-unusual-derivatives-activity`.
 
 ---
 
@@ -37,13 +37,13 @@ If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, 
 Add or update this skill with npx. Ask the user before running either command.
 
 ```bash
-npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-capital-anomaly
-npx skills update moomoo-capital-anomaly -g -y
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-unusual-capital-flows
+npx skills update moomoo-unusual-capital-flows -g -y
 ```
 
 ## Prerequisite: moomoo CLI
 
-This skill calls **`moomoo anomaly capital`**. Do **not** use OpenD or removed `moomooapi` scripts. Follow [CLI runtime](../references/cli-runtime.md).
+This skill calls **`moomoo unusual capital-flows`**. Do **not** use OpenD or removed `moomooapi` scripts. Follow [CLI runtime](../references/cli-runtime.md).
 
 ---
 
@@ -134,15 +134,15 @@ Default strategy:
 ### 5. Call the CLI
 
 ```bash
-moomoo anomaly capital <STANDARD_SYMBOL> --time-range <DAYS> [--analysis-dimensions <DIM> ...] [--language-id <ID>] --format json --source skill
+moomoo unusual capital-flows <STANDARD_SYMBOL> --time-range <DAYS> [--analysis-dimensions <DIM> ...] [--language-id <ID>] --format json --source skill
 ```
 
 Examples:
 
 ```bash
-moomoo anomaly capital US.NVDA --time-range 7 --format json --source skill
-moomoo anomaly capital HK.00700 --time-range 7 --analysis-dimensions funds_distribution funds_broker --format json --source skill
-moomoo anomaly capital US.AAPL --time-range 5 --analysis-dimensions funds_flow --format json --source skill
+moomoo unusual capital-flows US.NVDA --time-range 7 --format json --source skill
+moomoo unusual capital-flows HK.00700 --time-range 7 --analysis-dimensions funds_distribution funds_broker --format json --source skill
+moomoo unusual capital-flows US.AAPL --time-range 5 --analysis-dimensions funds_flow --format json --source skill
 ```
 
 ### 6. Check the Result

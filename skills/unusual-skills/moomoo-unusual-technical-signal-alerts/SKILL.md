@@ -1,15 +1,15 @@
 ---
-name: moomoo-technical-anomaly
+name: moomoo-unusual-technical-signal-alerts
 description: >-
-  Detects technical-analysis anomaly signals for a user-mentioned stock with
-  `get_technical_unusual`, including K线形态 and indicator events such as CCI,
-  KDJ, RSI, BIAS, ARBR, VR, PSY, OSC, WMSR, MACD, BOLL, and MA. Use when the
-  user asks about 技术面情况、最近有什么技术信号、K线形态、形态识别、形态突破、金叉/死叉、
-  超买超卖、MACD、RSI、KDJ、CCI、MA、BOLL、WMSR、VR、PSY、OSC、BIAS、ARBR，
-  or gives a broad stock-anomaly request such as “英伟达异动”、“NVDA 异动”、
-  “腾讯有没有异动/异常” without narrowing the dimension. For broad anomaly
-  requests, this skill should be used together with `capital-anomaly` and
-  `derivatives-anomaly`. Before calling the CLI, you must first normalize the
+  Technical Signal Alerts (技术面异动): detects technical unusual signals for a
+  user-mentioned stock with `get_technical_unusual`, including K线形态 and indicator
+  events such as CCI, KDJ, RSI, BIAS, ARBR, VR, PSY, OSC, WMSR, MACD, BOLL, and MA.
+  Use when the user asks about 技术面情况、最近有什么技术信号、K线形态、形态识别、形态突破、
+  金叉/死叉、超买超卖、MACD、RSI、KDJ、CCI、MA、BOLL、WMSR、VR、PSY、OSC、BIAS、ARBR，
+  or gives a broad 异动 request such as “英伟达异动”、“NVDA 异动”、“腾讯有没有异动/异常”
+  without narrowing the dimension. For broad 异动 requests, use together with
+  `moomoo-unusual-capital-flows` and `moomoo-unusual-derivatives-activity`. Before calling
+  the CLI, you must first normalize the
   user-mentioned stock name, Chinese company name, English company name, or
   ticker into a standard symbol such as `US.NVDA` or `HK.00700`.
 allowed-tools: Bash Read
@@ -22,13 +22,13 @@ metadata:
 license: MIT
 ---
 
-# Technical Anomaly Skill
+# 技术面异动 · Technical Signal Alerts
 
-Detects technical-analysis anomalies for a specific stock and formats the result as a structured technical anomaly summary.
+Detects technical signal alerts for a specific stock and formats the result as a structured Technical Signal Alerts summary.
 
-This skill is for **anomaly detection** rather than a regular technical overview. Focus on concrete abnormal events within the requested window. Do not add extra market commentary, fundamentals-based explanations, or investment advice.
+This skill is for **unusual-move detection** rather than a regular technical overview. Focus on concrete alert events within the requested window. Do not add extra market commentary, fundamentals-based explanations, or investment advice.
 
-If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, `腾讯有没有异常` and does not specify a dimension, treat it as a bundled anomaly request. In that case, this skill should be used as one of the three default anomaly skills together with `capital-anomaly` and `derivatives-anomaly`.
+If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, `腾讯有没有异常` and does not specify a dimension, treat it as a bundled 异动 request. In that case, use this skill together with `moomoo-unusual-capital-flows` and `moomoo-unusual-derivatives-activity`.
 
 ---
 
@@ -37,15 +37,15 @@ If the user only says a broad request such as `英伟达异动`, `NVDA 异动`, 
 Add or update this skill with npx. Ask the user before running either command.
 
 ```bash
-npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-technical-anomaly
-npx skills update moomoo-technical-anomaly -g -y
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-unusual-technical-signal-alerts
+npx skills update moomoo-unusual-technical-signal-alerts -g -y
 ```
 
 ## Prerequisite: moomoo CLI
 
-This skill calls **`moomoo anomaly technical`** (OAuth REST via the official CLI). Do **not** use OpenD, `moomoo-api`, or removed `moomooapi` scripts.
+This skill calls **`moomoo unusual technical-signals`** (OAuth REST via the official CLI). Do **not** use OpenD, `moomoo-api`, or removed `moomooapi` scripts.
 
-Before the workflow, follow [CLI runtime](../references/cli-runtime.md). If `moomoo anomaly` is not recognized, say anomaly needs a newer CLI — see repo `docs/migration-gaps-and-rest-api.md`.
+Before the workflow, follow [CLI runtime](../references/cli-runtime.md). If `moomoo unusual` is not recognized, say Unusual skills need a newer CLI — see repo `docs/migration-gaps-and-rest-api.md`.
 
 ---
 
@@ -144,20 +144,20 @@ Default strategy:
 ### 5. Call the CLI
 
 ```bash
-moomoo anomaly technical <STANDARD_SYMBOL> --time-range <DAYS> [--indicator-filters <FILTER> ...] [--language-id <ID>] --format json --source skill
+moomoo unusual technical-signals <STANDARD_SYMBOL> --time-range <DAYS> [--indicator-filters <FILTER> ...] [--language-id <ID>] --format json --source skill
 ```
 
 Examples:
 
 ```bash
-moomoo anomaly technical US.NVDA --time-range 7 --format json --source skill
-moomoo anomaly technical HK.00700 --time-range 7 --indicator-filters MACD RSI6 RSI12 RSI24 --format json --source skill
-moomoo anomaly technical SH.600519 --time-range 14 --indicator-filters BOLL MA --format json --source skill
+moomoo unusual technical-signals US.NVDA --time-range 7 --format json --source skill
+moomoo unusual technical-signals HK.00700 --time-range 7 --indicator-filters MACD RSI6 RSI12 RSI24 --format json --source skill
+moomoo unusual technical-signals SH.600519 --time-range 14 --indicator-filters BOLL MA --format json --source skill
 ```
 
 ### 6. Check the Result
 
-- If the CLI exits successfully, use the JSON to build a structured technical-anomaly summary.
+- If the CLI exits successfully, use the JSON to build a structured Technical Signal Alerts summary.
 - If the CLI returns an error, surface the error message and do not fabricate results.
 - If a requested indicator has no anomaly in the window, explicitly say `No anomaly`.
 

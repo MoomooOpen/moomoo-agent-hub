@@ -21,11 +21,11 @@ Upgrade path: [upgrade-from-opend.md](./upgrade-from-opend.md).
 
 | Former SDK method | Skill |
 |-------------------|--------|
-| `get_technical_unusual` | `moomoo-technical-anomaly` |
-| `get_financial_unusual` | `moomoo-capital-anomaly` |
-| `get_derivative_unusual` | `moomoo-derivatives-anomaly` |
+| `get_technical_unusual` | `moomoo-unusual-technical-signal-alerts`（Technical Signal Alerts） |
+| `get_financial_unusual` | `moomoo-unusual-capital-flows`（Unusual Capital Flows） |
+| `get_derivative_unusual` | `moomoo-unusual-derivatives-activity`（Unusual Derivatives Activity） |
 
-Invoked via **`moomoo anomaly *`** — implemented in moomoo-cli (same as futu-cli); gateway/`api_base`联调待验。
+Invoked via **`moomoo unusual *`** (`anomaly` alias) — implemented in moomoo-cli (same as futu-cli); gateway/`api_base`联调待验。
 
 ### P1 — Subscribe / push (WSS) — handled in Hub
 
@@ -45,9 +45,9 @@ Same **SkillWrap** contract as Futu (from FutuOpenD): OpenD posts JSON to **`htt
 
 | Priority | `NN_ProtoCmd` | OpenAPI Pb | OpenD HTTP (POST) | CLI |
 |----------|---------------|------------|-------------------|-----|
-| P0 | **无**（OpenD 未注册） | **3801** `SkillWrap_TechnicalUnusual` | `/api/v1/get_technical_unusual` | `moomoo anomaly technical <symbol> ...` |
-| P0 | **无** | **3802** `SkillWrap_FinancialUnusual` | `/api/v1/get_financial_unusual` | `moomoo anomaly capital <symbol> ...` |
-| P0 | **无** | **3803** `SkillWrap_DerivativeUnusual` | `/api/v1/get_derivative_unusual` | `moomoo anomaly derivatives <symbol> ...` |
+| P0 | **无**（OpenD 未注册） | **3801** `SkillWrap_TechnicalUnusual` | `/api/v1/get_technical_unusual` | `moomoo unusual technical-signals <symbol> ...` |
+| P0 | **无** | **3802** `SkillWrap_FinancialUnusual` | `/api/v1/get_financial_unusual` | `moomoo unusual capital-flows <symbol> ...` |
+| P0 | **无** | **3803** `SkillWrap_DerivativeUnusual` | `/api/v1/get_derivative_unusual` | `moomoo unusual derivatives-activity <symbol> ...` |
 
 Rate limit (OpenD): 30 req / 30 s per proto 3801–3803.
 

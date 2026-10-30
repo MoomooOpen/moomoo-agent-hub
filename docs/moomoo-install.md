@@ -10,7 +10,7 @@ Install moomoo Skills into your AI client in two steps.
 |------------|---------|-------|
 | `curl` | Content skills and CLI installer download | `curl --version` |
 | Node.js 18+ | Provides `npx` for `npx skills add` | `node -v` |
-| `moomoo` CLI | Quote, trading, and anomaly skills | `moomoo version` |
+| `moomoo` CLI | Quote, trading, and Unusual skills | `moomoo version` |
 
 > Upgrading from OpenD: [upgrade-from-opend.md](./upgrade-from-opend.md). Gaps and REST backlog: [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md).
 
@@ -18,7 +18,7 @@ Install moomoo Skills into your AI client in two steps.
 
 ## Step 1 — Install Skill Files
 
-Install search and anomaly-detection skills into your AI client's skills directory:
+Install search and Unusual skills into your AI client's skills directory:
 
 ```bash
 npx skills add -y -g MoomooOpen/moomoo-agent-hub#main
@@ -60,7 +60,7 @@ npx skills add -y -g MoomooOpen/moomoo-agent-hub
 
 ## Step 2 — Install and authorize moomoo CLI
 
-Quote, trading, and anomaly skills use the **`moomoo` CLI** (OAuth). OpenD is **not** required.
+Quote, trading, and Unusual skills use the **`moomoo` CLI** (OAuth). OpenD is **not** required.
 
 ```bash
 moomoo version
@@ -69,7 +69,7 @@ moomoo auth status --format json
 moomoo check
 ```
 
-Anomaly skills use `moomoo anomaly ...` when available — see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md).
+Unusual skills use `moomoo unusual ...` (`anomaly` alias) when available — see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md).
 
 ---
 
@@ -97,6 +97,6 @@ Some clients require a restart or a new chat session to pick up newly installed 
 
 - Run `moomoo auth status` — if not logged in, run `moomoo auth login`
 - Run `moomoo check`
-- Unknown `moomoo anomaly`: see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md)
+- Unknown `moomoo unusual`: see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md)
 
 </details>

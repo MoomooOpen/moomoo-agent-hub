@@ -36,7 +36,7 @@ moomoo check
 | Live trading | `moomoo-trading` |
 | Paper trading | `moomoo-sim-trading` |
 | Crypto | `moomoo-crypto` |
-| Anomalies | `moomoo-*-anomaly` via `moomoo anomaly` (see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md)) |
+| Unusual | `moomoo-unusual-*` via `moomoo unusual` (see [migration-gaps-and-rest-api.md](./migration-gaps-and-rest-api.md)) |
 | Monolithic moomooapi | **Removed** |
 
 ## 5. Former OpenD subscribe / push / broker queue
