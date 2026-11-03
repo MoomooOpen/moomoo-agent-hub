@@ -41,13 +41,13 @@ Core quote + live/sim/crypto trade: covered by `moomoo` CLI and four quote/trade
 
 ## 3. REST APIs to add
 
-Same **SkillWrap** contract as Futu (from FutuOpenD): OpenD posts JSON to **`https://api.moomoo.com`** (moomoo) with paths below. OAuth CLI should expose the same body/response on moomoo `api_base`.
+OAuth CLI calls these paths on the configured `api_base`. `symbol` is a path parameter; the JSON body does not include `stock_symbol`.
 
-| Priority | `NN_ProtoCmd` | OpenAPI Pb | OpenD HTTP (POST) | CLI |
-|----------|---------------|------------|-------------------|-----|
-| P0 | **无**（OpenD 未注册） | **3801** `SkillWrap_TechnicalUnusual` | `/api/v1/get_technical_unusual` | `moomoo unusual technical-signals <symbol> ...` |
-| P0 | **无** | **3802** `SkillWrap_FinancialUnusual` | `/api/v1/get_financial_unusual` | `moomoo unusual capital-flows <symbol> ...` |
-| P0 | **无** | **3803** `SkillWrap_DerivativeUnusual` | `/api/v1/get_derivative_unusual` | `moomoo unusual derivatives-activity <symbol> ...` |
+| Priority | HTTP | CLI |
+|----------|------|-----|
+| P0 | `POST /api/v1.0/quote/{symbol}/unusual/technical` | `moomoo unusual technical-signals <symbol> ...` |
+| P0 | `POST /api/v1.0/quote/{symbol}/unusual/capital` | `moomoo unusual capital-flows <symbol> ...` |
+| P0 | `POST /api/v1.0/quote/{symbol}/unusual/derivatives` | `moomoo unusual derivatives-activity <symbol> ...` |
 
 Rate limit (OpenD): 30 req / 30 s per proto 3801–3803.
 
