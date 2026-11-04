@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-quote--trade-skills">Quote & Trade Skills</a> · <a href="#-unusual-skills">Unusual Skills</a> · <a href="#-search--content-skills">Search & Content Skills</a> · <a href="#-architecture">Architecture</a>
+  <a href="#-quick-start">Quick Start</a> · <a href="#-skills-overview">Skills Overview</a> · <a href="#-quote--trade-skills">Quote & Trade Skills</a> · <a href="#-technical-analysis-skills">Technical Analysis Skills</a> · <a href="#-search--content-skills">Search & Content Skills</a> · <a href="#-quantitative-strategy">Quantitative Strategy</a> · <a href="#-architecture">Architecture</a>
 </p>
 
 
@@ -29,22 +29,23 @@ Works with **Claude Code**, **Cursor**, **Claude Desktop**, **VS Code**, **JetBr
 
 ## Skills Overview
 
-Moomoo Agent Hub ships **10 production-ready Skills** (quote/trade, unusual, content). **No OpenD** required.
+Moomoo Agent Hub ships **11 Skills** in four groups: quote and trade, content analysis, technical analysis, and quantitative strategy. The quantitative skill in this repo is the grid strategy `moomoo-grid-strategy`. **No OpenD** is required.
 
 | Category | Skill | Description | Requires |
 |----------|-------|-------------|----------|
-| **Quote / Trade** | `moomoo-quote` | Market data via the `moomoo` CLI | `moomoo` CLI |
-| **Quote / Trade** | `moomoo-trading` | Real securities accounts, funds, positions, orders, and fills | `moomoo` CLI |
-| **Quote / Trade** | `moomoo-crypto` | Cryptocurrency accounts, balances, orders, and fills | `moomoo` CLI |
-| **Quote / Trade** | `moomoo-sim-trading` | Simulated / paper accounts, positions, and orders | `moomoo` CLI |
-| **Unusual** | `moomoo-unusual-capital-flows` | Unusual Capital Flows — `moomoo unusual capital-flows` | `moomoo` CLI |
-| **Unusual** | `moomoo-unusual-derivatives-activity` | Unusual Derivatives Activity — `moomoo unusual derivatives-activity` | `moomoo` CLI |
-| **Unusual** | `moomoo-unusual-technical-signal-alerts` | Technical Signal Alerts — `moomoo unusual technical-signals` | `moomoo` CLI |
-| **Search / Content** | `moomoo-news-search` | News, notices, research search | `curl` |
-| **Search / Content** | `moomoo-stock-digest` | Single-stock news digest | `curl` |
-| **Search / Content** | `moomoo-comment-sentiment` | Community sentiment | `curl` |
+| **Quote / Trade** | `moomoo-quote` | Quotes for stocks, options, futures, and crypto. Does not place orders | `moomoo` CLI |
+| **Quote / Trade** | `moomoo-trading` | The user's selected live stock account, funds, positions, orders, and fills | `moomoo` CLI |
+| **Quote / Trade** | `moomoo-sim-trading` | The user's selected paper account via `moomoo sim` | `moomoo` CLI |
+| **Quote / Trade** | `moomoo-crypto` | Crypto account, balance, orders, and fills. Quotes stay on `moomoo-quote` | `moomoo` CLI |
+| **Technical analysis** | `moomoo-unusual-technical-signal-alerts` | K-line and indicator alerts — `moomoo unusual technical-signals` | `moomoo` CLI |
+| **Technical analysis** | `moomoo-unusual-capital-flows` | Fund distribution, flow, brokers, and short sell — `moomoo unusual capital-flows` | `moomoo` CLI |
+| **Technical analysis** | `moomoo-unusual-derivatives-activity` | Options and warrant alerts — `moomoo unusual derivatives-activity` | `moomoo` CLI |
+| **Content analysis** | `moomoo-news-search` | News, notices, and research | `curl` |
+| **Content analysis** | `moomoo-stock-digest` | Stock briefing with source time and links | `curl` |
+| **Content analysis** | `moomoo-comment-sentiment` | Community sentiment with window and sample size | `curl` |
+| **Quantitative strategy** | `moomoo-grid-strategy` | Single-symbol base-price grid. Paper account by default | OpenAPI |
 
-Removed: **`moomooapi` / `install-moomoo-opend`**. See [`docs/upgrade-from-opend.md`](docs/upgrade-from-opend.md) and [`docs/migration-gaps-and-rest-api.md`](docs/migration-gaps-and-rest-api.md). **Live subscribe and broker queue:** Open API WebSocket — [`docs/websocket-quote-push.md`](docs/websocket-quote-push.md).
+Removed: **`moomooapi` / `install-moomoo-opend`**. See [`docs/upgrade-from-opend.md`](docs/upgrade-from-opend.md) and [`docs/migration-gaps-and-rest-api.md`](docs/migration-gaps-and-rest-api.md). Skills pull REST through the CLI. Continuous push and broker queue have no `moomoo subscribe` command; connect to the Open API WebSocket yourself — [`docs/websocket-quote-push.md`](docs/websocket-quote-push.md).
 
 ---
 
@@ -81,18 +82,20 @@ npx skills update moomoo-quote -g -y
 
 Use the same commands for `moomoo-trading`, `moomoo-crypto`, and `moomoo-sim-trading`. When `moomoo` is missing, the assistant asks, then runs the [official moomoo-cli installer](https://github.com/MoomooOpen/moomoo-cli/blob/main/README.md). An existing CLI is updated with `moomoo update`.
 
-**Unusual skills** — same `moomoo` CLI as quote/trade; use `moomoo unusual` subcommands when released (see [migration-gaps-and-rest-api.md](docs/migration-gaps-and-rest-api.md)).
+**Technical analysis** uses the same `moomoo` CLI: `moomoo unusual technical-signals`, `capital-flows`, and `derivatives-activity`.
 
-> Quote/trade/unusual need OAuth via `moomoo auth login` and app permissions where applicable.
+**Quantitative strategy** is `moomoo-grid-strategy`. It writes a grid program from the OpenAPI docs and accepts it on a paper account.
+
+> Quote, trade, and technical analysis need OAuth via `moomoo auth login` and the matching account permission. Content analysis does not. Installing a skill does not grant an account or market-data permission. The CLI is installed once.
 
 ### 3. Start using
 
 ```
 > Show me Tesla's real-time quote
-> Place a limit buy for 100 shares of TSLA at $250
+> List my live accounts, then submit a limit buy only after I confirm
 > Search the latest news for NVIDIA
 > 看看 NVDA 最近有没有异动？
-> 帮我解读一下比亚迪最近发生了什么
+> 帮我写一个 AAPL 的网格策略
 ```
 
 ---
@@ -103,10 +106,10 @@ Four skills that call the local [`moomoo` CLI](https://github.com/MoomooOpen/moo
 
 | Skill | Use for |
 |-------|---------|
-| `moomoo-quote` | Quotes, K-line, snapshots, order book, capital flow, company data, and screeners. Not for placing orders. |
-| `moomoo-trading` | Real securities accounts, funds, positions, orders, and fills. |
-| `moomoo-crypto` | Cryptocurrency exchange accounts, balances, orders, and fills. |
-| `moomoo-sim-trading` | Simulated or paper trading only. A plain "buy" or "sell" does not select this skill. |
+| `moomoo-quote` | Quotes, K-line, snapshots, order book, capital flow, company data, and screeners for stocks, options, futures, and crypto. A quote includes symbol, price, change, currency, time, and source. Adding or removing a watchlist symbol is a write. Not for placing orders. |
+| `moomoo-trading` | The live stock account the user picked. List accounts first and keep that choice. Confirm account, symbol, side, quantity, order type, and price before an order. Return the order id and status. A submit is not a fill. |
+| `moomoo-sim-trading` | Paper stock accounts only, via `moomoo sim` with the account the user picked. Do not auto-pick the first account, and do not call live or crypto order commands. |
+| `moomoo-crypto` | The crypto account the user picked, balances, `BTCUSD`-style pairs, orders, and fills. Crypto quotes stay on `moomoo-quote`. |
 
 Each skill declares `requires.bins: [moomoo]` and includes the install steps. Add or update a skill with npx:
 
@@ -133,22 +136,22 @@ The binary is installed to `~/.moomoo/bin/moomoo` on macOS and Linux, and to `%L
 **Example prompts:**
 ```
 Show me the order book for HK.00700
-Buy 100 shares of US.AAPL at 250 on my real account
-Check my BTCUSD crypto balance
-Paper-trade a limit buy for US.AAPL
+List my live stock accounts, then show positions for the one I pick
+Check my selected crypto account's BTCUSD buying power
+Paper-trade a limit buy for US.AAPL on the paper account I choose
 ```
 
 ---
 
-## Unusual Skills
+## Technical Analysis Skills
 
-Three skills for "is anything odd happening with this stock?" — **Unusual Capital Flows**, **Unusual Derivatives Activity**, and **Technical Signal Alerts** — via **`moomoo unusual`** CLI (requires CLI/API release — see [migration-gaps-and-rest-api.md](docs/migration-gaps-and-rest-api.md)).
+Three skills for "is anything odd happening with this stock?": **Technical Signal Alerts**, **Unusual Capital Flows**, and **Unusual Derivatives Activity**. A broad request such as "any anomaly in NVDA" calls all three. Separate no-anomaly, no-data, not-applicable, permission-denied, and request-failed results. Signals come from `moomoo unusual`, not from ordinary quote indicators.
 
 | Skill | Triggers on | Signals |
 |-------|------------|---------|
-| `moomoo-unusual-capital-flows` | "capital flow / fund flow / short sell / who's buying" | Fund distribution, broker buy/sell, capital flow trend, short-sell volume & ratio |
-| `moomoo-unusual-derivatives-activity` | "options / IV / PCR / warrants" | Implied volatility, put/call ratio, unusual option activity, warrant flow |
 | `moomoo-unusual-technical-signal-alerts` | "K-line / MACD / RSI / overbought / golden cross" | Pattern detection across MACD, RSI, KDJ, CCI, K-line shapes |
+| `moomoo-unusual-capital-flows` | "capital flow / fund flow / short sell / who's buying" | Fund distribution, broker buy/sell, capital flow trend, short-sell volume and ratio |
+| `moomoo-unusual-derivatives-activity` | "options / IV / PCR / warrants" | Implied volatility, put/call ratio, unusual option activity, warrant flow |
 
 **Example prompts:**
 ```
@@ -161,7 +164,7 @@ Are there any anomalies for NVDA today?
 
 ## Search & Content Skills
 
-Three skills calling public moomoo HTTP endpoints — **no moomoo CLI required**.
+Three skills calling public moomoo HTTP endpoints. **No moomoo CLI or trade authorization is required.**
 
 ### `moomoo-news-search` — News Search
 
@@ -176,17 +179,36 @@ Three skills calling public moomoo HTTP endpoints — **no moomoo CLI required**
 
 ### `moomoo-stock-digest` — Stock Briefing
 
-Continuously delivers the latest factual updates and core analysis for a given stock — what happened, why it matters, what's worth watching. Batch-input multiple symbols supported.
+Summarizes what happened for the chosen symbols, with the news time and links behind the conclusion. Mark a static sample as an example. Batch input of several symbols is supported.
 
 ### `moomoo-comment-sentiment` — Sentiment Gauge
 
-Aggregates community discussion + KOL views into a standardized sentiment score, so you can read the room before deciding.
+Aggregates community discussion and KOL views into bull/bear share and representative comments. Include the time window, sample size, and source. Say when the sample is too small.
 
 **Example prompts:**
 ```
 Search for the latest news on NVIDIA
 帮我解读一下比亚迪最近发生了什么
 看看社区对小米的情绪怎么样
+```
+
+---
+
+## Quantitative Strategy
+
+The quantitative skill in this repo is `moomoo-grid-strategy`. It guides an agent to write a single-symbol base-price grid program from the OpenAPI docs: check the parameters first, then write a restart-safe limit-order reconciliation loop.
+
+| Item | Detail |
+|------|--------|
+| Scope | One stock or ETF: `HK.00700`, `US.AAPL`, `SH.600519`, `SZ.000001` |
+| Orders | Percentage-spaced day limit orders, replaced across days by the reconciliation loop |
+| Environment | Paper account by default. Live pages are used only after the user explicitly asks for live trading in that conversation |
+| Out of scope | Options, futures, crypto, multiple symbols, and market orders |
+
+Request fields come from [OpenAPI llms.md](https://open.moomoo.com/zh-cn/llms.txt). Calls go to `webapi.moomoo.com`. The skill does not copy request bodies or read token files.
+
+```bash
+npx skills add -y -g MoomooOpen/moomoo-agent-hub --skill moomoo-grid-strategy
 ```
 
 ---
@@ -206,10 +228,10 @@ Search for the latest news on NVIDIA
 │   npx skills add / npx skills update                              │
 │                                                                   │
 │  ┌─────────────────────┐ ┌────────────┐ ┌───────────────┐  │
-│  │ Quote/Trade         │ │  Anomaly   │ │Search/Content │  │
-│  │ quote/trading/      │ │ capital /  │ │ news-search   │  │
-│  │ crypto/sim          │ │ derivatives│ │ stock-digest  │  │
-│  └──────────┬──────────┘ │ / technical│ │ sentiment     │  │
+│  │ Quote/Trade         │ │ Technical  │ │Search/Content │  │
+│  │ quote/trading/      │ │ technical/ │ │ news-search   │  │
+│  │ crypto/sim          │ │ capital/   │ │ stock-digest  │  │
+│  └──────────┬──────────┘ │ derivatives│ │ sentiment     │  │
 │             │            └─────┬──────┘ └──────┬────────┘  │
 └─────────────┼──────────────────┼───────────────┼───────────┘
               ▼                  ▼               ▼
@@ -229,20 +251,19 @@ Each skill under `skills/` is self-contained. `SKILL.md` frontmatter holds `meta
 
 ## Security
 
-- **Credentials via env vars only** — never hardcoded
-- **Trade confirmation** — write operations require explicit user confirmation
-- **CLI OAuth** — Token stays local; skills do not read token file contents
-- **Quote/Trade CLI** — `moomoo-quote`, `moomoo-trading`, `moomoo-crypto`, and `moomoo-sim-trading` call the local `moomoo` CLI. The CLI attaches OAuth credentials; skills do not read token files
-- **Read-only mode** — restrict to market data queries by omitting trade credentials
+- **Do not store credentials in the repo or the chat** — the CLI keeps the OAuth token locally and attaches the bearer token. The grid skill follows the OpenAPI docs and does not write tokens into code
+- **Trade confirmation** — the user confirms account, symbol, side, quantity, and price. The agent does not confirm on the user's behalf
+- **A submit is not a fill** — return the order id and the actual status. Query first when the status is unknown
+- **Quote/Trade/Technical CLI** — `moomoo-quote`, `moomoo-trading`, `moomoo-crypto`, `moomoo-sim-trading`, and the three `moomoo-unusual-*` skills call the local `moomoo` CLI. They do not read token files
+- **Content skills** — public HTTP only. No user credentials are sent
 - **Rate limiting** — respects Moomoo OpenAPI's built-in limits
-- **Content & Anomaly endpoints** — public HTTP, no user credentials transmitted; reference data only
 
 ---
 
 ## FAQ
 
 **Q: Do I need OpenD for all Skills?**
-A: No. **Quote/Trade** and **Anomaly** skills use the `moomoo` CLI (OAuth). **Search/Content** skills call public HTTP only. OpenD and `moomooapi` were removed — see [upgrade-from-opend.md](docs/upgrade-from-opend.md).
+A: No. **Quote/Trade** and **Technical Analysis** skills use the `moomoo` CLI (OAuth). **Search/Content** skills call public HTTP only. The grid strategy follows the OpenAPI docs. OpenD and `moomooapi` were removed — see [upgrade-from-opend.md](docs/upgrade-from-opend.md).
 
 **Q: When is the `moomoo` CLI downloaded?**
 A: When a Quote/Trade skill is in use and `moomoo` is missing. The skill asks first, then runs the official installer. `npx skills add` and `npx skills update` only install or update the skill files.
