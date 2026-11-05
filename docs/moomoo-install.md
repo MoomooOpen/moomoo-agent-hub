@@ -40,7 +40,7 @@ npx skills update <slug> -g -y
 
 ```bash
 bash scripts/migrate-renamed-skills.sh
-npx skills add -y -g MoomooOpen/moomoo-agent-hub
+npx skills add -y -g MoomooOpen/moomoo-agent-hub#main
 ```
 
 ### Per-Client Targets
