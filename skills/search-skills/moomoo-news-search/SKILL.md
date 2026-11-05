@@ -26,6 +26,8 @@ license: MIT
 
 # moomoo News Search Skill
 
+Answer in the user's language by default.
+
 Searches news, notices, and research reports on the moomoo platform and formats the results as a user-facing news roundup.
 
 **Base URL:** `https://ai-news-search.moomoo.com`

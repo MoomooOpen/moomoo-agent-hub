@@ -10,6 +10,7 @@
 - 表格中的 `取值` 应按原样传给 CLI flag 或解析 API 响应；数值型枚举保持数字。
 - CLI 已统一证券代码入参为 `symbol`，格式为 `MARKET.CODE`，例如 `HK.00700`、`US.AAPL`；港股数字代码可补零。
 - `N/A` 或空字符串表示官方未映射、非适用或未知状态，skill 不应把它当成异常。
+- 用英文解释枚举时，沿用本表中文含义，不要另造术语。港股「暗盘」是上市前交易（grey market），不是美股 dark pool。
 
 ## 目录
 
@@ -65,9 +66,9 @@
 | LISTING | 待上市 |
 | PURCHASING | 申购中 |
 | SUBSCRIBING | 认购中 |
-| BEFORE_DARK_TRADE_OPEING | 暗盘开盘前 |
-| DARK_TRADING | 暗盘交易中 |
-| DARK_TRAD_END | 暗盘已收盘 |
+| BEFORE_DARK_TRADE_OPEING | 暗盘开盘前 (HK grey market, before the open) |
+| DARK_TRADING | 暗盘交易中 (HK grey market session) |
+| DARK_TRAD_END | 暗盘已收盘 (HK grey market closed) |
 | TO_BE_OPEN | 待开盘 |
 | SUSPENDED | 停牌 |
 | CALLED | 已收回（牛熊证） |
@@ -82,7 +83,7 @@
 | UNRECOVERABLE_CIRCUIT_BREAKER | 不可恢复熔断 |
 | AFTER_COMBINATION | 盘后撮合 |
 | AFTER_TRANSACTION | 盘后交易 |
-| DARK_TRADE_SUSPEND | 暗盘暂停 |
+| DARK_TRADE_SUSPEND | 暗盘暂停 (HK grey market suspended) |
 | EXPIRED_LAST_TRADING_TIME | 过最后交易时间 |
 | N/A | 未知 / 无对应映射 |
 
@@ -90,9 +91,9 @@
 
 | 取值 | 含义 |
 | --- | --- |
-| TRADING | 暗盘交易中 |
-| END | 暗盘已收盘 |
-| N/A | 非暗盘状态 |
+| TRADING | 暗盘交易中 (HK grey market session) |
+| END | 暗盘已收盘 (HK grey market closed) |
+| N/A | 非暗盘状态 (not in the HK grey market) |
 
 ## option_type（期权方向）
 
@@ -164,18 +165,18 @@
 
 | 取值 | 含义 |
 | --- | --- |
-| NORMAL | 正常盘中（默认；港股自动含暗盘） |
+| NORMAL | 正常盘中（默认；港股自动含暗盘）(includes the HK grey market) |
 | FULL | 完整含盘前盘后（仅美股，不含夜盘） |
 | PREMARKET | 美股盘前 |
 | AFTERHOURS | 美股盘后 |
-| HK_DARK | 港股暗盘 |
+| HK_DARK | 港股暗盘 (HK grey market) |
 | OVERNIGHT | 美股夜盘 |
 
 ## capital_flow_section（capital_flow 交易时段，入参；仅 get_capital_flow 用）
 
 | 取值 | 含义 |
 | --- | --- |
-| NORMAL | 正常盘中（默认；港股自动含暗盘） |
+| NORMAL | 正常盘中（默认；港股自动含暗盘）(includes the HK grey market) |
 | FULL | 完整含盘前盘后 |
 | PREMARKET | 仅盘前 |
 | AFTERHOURS | 仅盘后 |
@@ -198,7 +199,7 @@
 | NIGHT | 夜市 |
 | US_PREMARKET | 美股盘前 |
 | US_AFTERHOURS | 美股盘后 |
-| HK_DARK | 港股暗盘 |
+| HK_DARK | 港股暗盘 (HK grey market) |
 | FUT_PART1 | 期货第一时段 |
 | FUT_PART2 | 期货第二时段 |
 | STIB_AFTERHOURS | 科创板盘后 |
@@ -306,9 +307,9 @@
 | PENDING_LISTING | 待上市 |
 | IPO_PURCHASING_CN | A 股申购中 |
 | IPO_PURCHASING_OTHER | 其它市场申购中 |
-| DARK_TRADE_PENDING | 暗盘待开盘 |
-| DARK_TRADE_HAPPENING | 暗盘交易中 |
-| DARK_TRADE_END | 暗盘已收盘 |
+| DARK_TRADE_PENDING | 暗盘待开盘 (HK grey market pending open) |
+| DARK_TRADE_HAPPENING | 暗盘交易中 (HK grey market session) |
+| DARK_TRADE_END | 暗盘已收盘 (HK grey market closed) |
 | TO_BE_OPEN | 待开盘 |
 | SUSPENDED | 停牌 |
 | CALLED | 强制收回（牛熊证） |
@@ -323,7 +324,7 @@
 | CIRCUIT_BREAKER_UNRECOVERABLE | 不可恢复熔断 |
 | AFTER_COMBINATION | 盘后撮合 |
 | AFTER_TRANSACTION | 盘后交易 |
-| DARK_TRADE_SUSPEND | 暗盘暂停 |
+| DARK_TRADE_SUSPEND | 暗盘暂停 (HK grey market suspended) |
 | EXPIRED_LAST_TRADING_TIME | 最后交易时刻已过 |
 
 ## stock_child_type（窝轮子类型）
@@ -541,9 +542,9 @@ SH 与 SZ 在板块接口上共用 A 股板块集合（调用 SH 或 SZ 等价�
 | HSG_QUATER_FLOW | 沪深港通近一季资金流 |
 | TTM_PE | TTM 市盈率 |
 | ANNUAL_PE | 静态市盈率 |
-| BMP_PRICE | 暗盘价 |
-| BMP_PRICE_CHANGE_VAL | 暗盘涨跌额 |
-| BMP_PRICE_CHANGE_RATE | 暗盘涨跌幅 |
+| BMP_PRICE | 暗盘价 (HK grey market price) |
+| BMP_PRICE_CHANGE_VAL | 暗盘涨跌额 (HK grey market change) |
+| BMP_PRICE_CHANGE_RATE | 暗盘涨跌幅 (HK grey market change rate) |
 | WEIGHT | 板块权重 |
 | EFFECT_DOT | 影响点数 |
 | US_FUTURE_DEFAULT | 美股期货默认排序 |
@@ -552,8 +553,8 @@ SH 与 SZ 在板块接口上共用 A 股板块集合（调用 SH 或 SZ 等价�
 | POSITION_CHANGE | 日增仓（期货） |
 | LAST_TRADE_TIME | 最后交易时间（期货） |
 | EN_NAME | 英文名称 |
-| DARK_CHANGE_RATIO | 暗盘涨跌幅（兼容字段） |
-| DARK_CHANGE_VAL | 暗盘涨跌额（兼容字段） |
+| DARK_CHANGE_RATIO | 暗盘涨跌幅（兼容字段）(HK grey market change rate) |
+| DARK_CHANGE_VAL | 暗盘涨跌额（兼容字段）(HK grey market change) |
 | PB | 市净率 |
 | TRUST_AUM | 信托基金资产规模 AUM |
 | TRADE_INFO | 交易信息 |
